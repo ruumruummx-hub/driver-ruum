@@ -17,12 +17,16 @@ import {
   IdCard,
   KeyRound,
   LayoutDashboard,
+  Lock,
+  LogIn,
+  Mail,
   Map,
   MapPin,
   Navigation,
   ReceiptText,
   Settings,
   Timer,
+  UserPlus,
   Wallet,
   XCircle
 } from "lucide-react";
@@ -146,11 +150,16 @@ const acceptedTrips = [
 ];
 
 export default function Home() {
+  const [isAuthed, setIsAuthed] = useState(false);
   const [tab, setTab] = useState<Tab>("panel");
   const [tripTab, setTripTab] = useState<TripTab>("ofertas");
   const [flow, setFlow] = useState<FlowStep | null>(null);
   const [acceptedOffer, setAcceptedOffer] = useState(false);
   const [evidenceIndex, setEvidenceIndex] = useState(0);
+
+  if (!isAuthed) {
+    return <Onboarding onEnter={() => setIsAuthed(true)} />;
+  }
 
   const goPanel = () => {
     setTab("panel");
@@ -250,6 +259,99 @@ export default function Home() {
           <span />
         </div>
       </div>
+    </main>
+  );
+}
+
+function Onboarding({ onEnter }: { onEnter: () => void }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("Ingresa con tus datos de conductor.");
+
+  const hasEmail = email.trim().includes("@");
+  const hasPassword = password.trim().length >= 6;
+
+  const submit = (mode: "login" | "signup") => {
+    if (!hasEmail) {
+      setMessage("Escribe un correo válido para continuar.");
+      return;
+    }
+    if (!hasPassword) {
+      setMessage("La contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+    setMessage(mode === "login" ? "Acceso correcto." : "Cuenta creada correctamente.");
+    onEnter();
+  };
+
+  const recover = () => {
+    if (!hasEmail) {
+      setMessage("Escribe tu correo para enviarte recuperación.");
+      return;
+    }
+    setMessage(`Enviamos instrucciones a ${email.trim()}.`);
+  };
+
+  return (
+    <main className="shell auth-shell">
+      <section className="auth-window" aria-label="Inicio de sesión">
+        <div className="auth-brand">
+          <span>Driver</span>
+          <h1>Bienvenido</h1>
+          <p>{message}</p>
+        </div>
+
+        <form
+          className="auth-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            submit("login");
+          }}
+        >
+          <label>
+            Correo
+            <span>
+              <Mail size={22} />
+              <input
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                placeholder="conductor@correo.com"
+              />
+            </span>
+          </label>
+
+          <label>
+            Contraseña
+            <span>
+              <Lock size={22} />
+              <input
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                type="password"
+                autoComplete="current-password"
+                placeholder="Mínimo 6 caracteres"
+              />
+            </span>
+          </label>
+
+          <button className="forgot-link" type="button" onClick={recover}>
+            ¿Olvidaste la contraseña?
+          </button>
+
+          <button className="auth-primary" type="submit">
+            <LogIn size={22} />
+            Entrar
+          </button>
+
+          <button className="auth-secondary" type="button" onClick={() => submit("signup")}>
+            <UserPlus size={22} />
+            Crear cuenta
+          </button>
+        </form>
+      </section>
     </main>
   );
 }
