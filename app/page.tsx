@@ -1297,11 +1297,11 @@ function EvidenceCapture({
 }
 
 const incidentReasons = [
-  "Vehículo no está en el lugar indicado",
-  "El VIN no coincide",
-  "Acceso bloqueado al área",
-  "Vehículo con daños visibles",
-  "Otro motivo"
+  "Accidente / Daño",
+  "Problema mecánico",
+  "Tráfico / Bloqueo",
+  "Condiciones del camino",
+  "Otro"
 ];
 
 function IncidentReport({
@@ -1313,10 +1313,16 @@ function IncidentReport({
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [note, setNote] = useState("");
-  const [photoCaptured, setPhotoCaptured] = useState(false);
+  const [photos, setPhotos] = useState<string[]>([]);
   const [sent, setSent] = useState(false);
 
   const canSend = selected !== null;
+
+  const handleAddPhoto = () => {
+    if (photos.length < 4) {
+      setPhotos(prev => [...prev, `foto_${prev.length + 1}`]);
+    }
+  };
 
   const handleSend = () => {
     if (!canSend) return;
@@ -1327,9 +1333,7 @@ function IncidentReport({
   if (sent) {
     return (
       <section className="screen flow-screen done-screen">
-        <div className="incident-sent-icon">
-          <CheckCircle2 size={64} />
-        </div>
+        <CheckCircle2 size={64} />
         <h1>Reporte enviado</h1>
         <p>Torre de control fue notificada. En breve recibirás instrucciones.</p>
       </section>
@@ -1338,60 +1342,83 @@ function IncidentReport({
 
   return (
     <section className="screen incident-screen">
-      <FlowHeader title="Reportar incidencia" onBack={onBack} />
-
-      <div className="incident-body">
-        <div className="incident-alert">
-          <XCircle size={20} />
-          <p>El vehículo no fue localizado. Completa el reporte para notificar a torre de control.</p>
-        </div>
-
-        <h3>Motivo de la incidencia</h3>
-        <div className="incident-reasons">
-          {incidentReasons.map((reason) => (
-            <button
-              key={reason}
-              className={`incident-reason ${selected === reason ? "selected" : ""}`}
-              onClick={() => setSelected(reason)}
-            >
-              {selected === reason ? <CheckCircle2 size={18} /> : <span className="incident-radio" />}
-              {reason}
-            </button>
-          ))}
-        </div>
-
-        <h3>Evidencia fotográfica</h3>
-        <button
-          className={`incident-photo-btn ${photoCaptured ? "captured" : ""}`}
-          onClick={() => setPhotoCaptured(true)}
-        >
-          {photoCaptured ? (
-            <><CheckCircle2 size={20} /> Foto capturada</>
-          ) : (
-            <><Camera size={20} /> Tomar foto del lugar</>
-          )}
+      {/* Header */}
+      <div className="incident-header">
+        <button className="icon-btn" onClick={onBack}>
+          <ArrowLeft size={22} />
         </button>
-
-        <h3>Nota adicional <span className="optional">(opcional)</span></h3>
-        <textarea
-          className="incident-note"
-          placeholder="Describe la situación con más detalle..."
-          value={note}
-          onChange={e => setNote(e.target.value)}
-          rows={3}
-        />
+        <h2>Reportar incidencia</h2>
+        <button className="icon-btn" onClick={onBack}>
+          <X size={22} />
+        </button>
       </div>
 
+      <div className="incident-body">
+        {/* Tipo de incidencia */}
+        <div className="incident-section">
+          <h3>Selecciona el tipo de incidencia</h3>
+          <div className="incident-reasons">
+            {incidentReasons.map((reason) => (
+              <button
+                key={reason}
+                className={`incident-reason ${selected === reason ? "selected" : ""}`}
+                onClick={() => setSelected(reason)}
+              >
+                <span className={`incident-radio ${selected === reason ? "checked" : ""}`} />
+                {reason}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Descripción */}
+        <div className="incident-section">
+          <h3>Descripción <span className="optional">(opcional)</span></h3>
+          <textarea
+            className="incident-note"
+            placeholder="Cuéntanos qué sucedió..."
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            rows={3}
+          />
+        </div>
+
+        {/* Fotos */}
+        <div className="incident-section">
+          <h3>Agrega fotos <span className="optional">(opcional)</span></h3>
+          <button
+            className="incident-photo-zone"
+            onClick={handleAddPhoto}
+            disabled={photos.length >= 4}
+          >
+            {photos.length === 0 ? (
+              <>
+                <Camera size={28} />
+                <span>Máx. 4 fotos</span>
+              </>
+            ) : (
+              <div className="incident-photo-thumbs">
+                {photos.map((p, i) => (
+                  <div key={i} className="incident-thumb">
+                    <Camera size={18} />
+                  </div>
+                ))}
+                {photos.length < 4 && (
+                  <div className="incident-thumb add-more">+</div>
+                )}
+              </div>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Footer */}
       <div className="incident-footer">
         <button
           className={`primary wide ${!canSend ? "disabled-btn" : ""}`}
           onClick={handleSend}
         >
-          <Navigation size={18} />
-          ENVIAR A TORRE DE CONTROL
-        </button>
-        <button className="secondary wide" onClick={onBack}>
-          SEGUIR BUSCANDO
+          Enviar reporte
         </button>
       </div>
     </section>
