@@ -30,6 +30,7 @@ import {
   Timer,
   UserPlus,
   Wallet,
+  X,
   XCircle
 } from "lucide-react";
 
