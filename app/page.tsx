@@ -40,6 +40,7 @@ type Tab = "panel" | "viajes" | "dinero" | "config" | "soporte";
 type TripTab = "ofertas" | "aceptados";
 type FlowStep =
   | "offerDetail"
+  | "tripDetail"
   | "summary"
   | "readyToGo"
   | "originMap"
@@ -175,6 +176,12 @@ export default function Home() {
   };
 
   const content = (() => {
+    if (flow === "tripDetail") {
+      return <TripDetail onBack={goPanel} onRoute={() => setFlow("originMap")} onIncident={() => setFlow("incident")} />;
+    }
+    if (flow === "incident") {
+      return <IncidentReport onBack={() => setFlow("tripDetail")} onSent={() => setFlow("tripDetail")} />;
+    }
     if (flow === "offerDetail") {
       return <OfferDetail onBack={() => setFlow(null)} onAccept={acceptOffer} onReject={() => setFlow(null)} />;
     }
@@ -201,7 +208,7 @@ export default function Home() {
     }
 
     if (tab === "panel") {
-      return <Panel onMoney={() => setTab("dinero")} onSettings={() => setTab("config")} hasTrip={acceptedOffer} onTrip={openSummary} onContact={() => setTab("contacto" as Tab)} onSupport={() => setTab("soporte")} />;
+      return <Panel onMoney={() => setTab("dinero")} onSettings={() => setTab("config")} hasTrip={acceptedOffer} onTrip={() => setFlow("tripDetail")} onContact={() => setTab("contacto" as Tab)} onSupport={() => setTab("soporte")} />;
     }
     if (tab === "viajes") {
       return (
@@ -527,6 +534,93 @@ function OfferDetail({ onBack, onAccept, onReject }: {
 }
 
 /* ── Trip Summary ───────────────────────────────────────── */
+/* ── Trip Detail (viaje activo desde Panel) ─────────────── */
+const tripTimeline = [
+  { label: "Solicitud recibida", date: "15 Mayo 2024, 09:15 AM", done: true },
+  { label: "Asignado a ti", date: "15 Mayo 2024, 09:17 AM", done: true },
+  { label: "Vehículo recibido", date: "15 Mayo 2024, 10:05 AM", done: true },
+  { label: "En traslado", date: "En progreso", done: false, active: true },
+  { label: "Vehículo entregado", date: "Pendiente", done: false },
+  { label: "Viaje completado", date: "Pendiente", done: false },
+];
+
+function TripDetail({ onBack, onRoute, onIncident }: {
+  onBack: () => void; onRoute: () => void; onIncident: () => void;
+}) {
+  return (
+    <section className="screen trip-detail-screen">
+      <TripDetailStyles />
+      <header className="trip-detail-header">
+        <button className="icon-button" onClick={onBack} aria-label="Volver"><ArrowLeft size={24} strokeWidth={2.5} /></button>
+        <h1>Detalle del viaje</h1>
+        <button className="icon-button" aria-label="Mensajes"><Mail size={22} /></button>
+      </header>
+
+      <div className="trip-detail-body">
+        <div className="trip-detail-id-row">
+          <h2>RR-2024-0587</h2>
+          <span className="trip-detail-badge">En camino</span>
+        </div>
+
+        {/* Timeline */}
+        <div className="trip-timeline">
+          {tripTimeline.map((item, idx) => (
+            <div key={idx} className={`timeline-item ${item.done ? "done" : ""} ${item.active ? "active" : ""}`}>
+              <div className="timeline-dot-col">
+                <div className="timeline-dot">
+                  {item.done ? <CheckCircle2 size={20} /> : item.active ? <Navigation size={16} /> : null}
+                </div>
+                {idx < tripTimeline.length - 1 && <div className="timeline-line" />}
+              </div>
+              <div className="timeline-content">
+                <strong>{item.label}</strong>
+                <span>{item.date}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Info del traslado */}
+        <div className="trip-detail-info">
+          <h3>Información del traslado</h3>
+          <div className="trip-detail-vehicle-row">
+            <div>
+              <span className="trip-detail-label">Vehículo</span>
+              <strong>BMW 320i · Gris Oxford · 2021</strong>
+              <span className="trip-detail-plate">ABC-123-D</span>
+            </div>
+            <div className="trip-detail-car-thumb">
+              <Car size={32} />
+            </div>
+          </div>
+          <div className="trip-detail-route">
+            <div className="trip-detail-route-item">
+              <MapPin size={16} className="origin-pin" />
+              <div>
+                <span className="trip-detail-label">Origen</span>
+                <strong>Ciudad de México, CDMX</strong>
+              </div>
+            </div>
+            <div className="trip-detail-route-item">
+              <Navigation size={16} className="dest-pin" />
+              <div>
+                <span className="trip-detail-label">Destino</span>
+                <strong>Guadalajara, Jalisco</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer actions */}
+      <div className="trip-detail-actions">
+        <button className="secondary" onClick={onIncident}>Reportar incidencia</button>
+        <button className="primary" onClick={onRoute}>En ruta al destino</button>
+      </div>
+    </section>
+  );
+}
+
 function TripSummary({ onBack, onGo }: { onBack: () => void; onGo: () => void }) {
   return (
     <section className="screen flow-screen">
@@ -1136,6 +1230,52 @@ function IncidentReport({ onBack, onSent }: { onBack: () => void; onSent: () => 
 }
 
 /* ── Bottom Nav ─────────────────────────────────────────── */
+/* ── Trip Detail Styles ─────────────────────────────────── */
+// Injected via <style> tag inside TripDetail — no globals.css dependency
+const tripDetailCSS = `
+.trip-detail-screen { display:flex; flex-direction:column; height:100%; background:var(--bg,#0d1117); color:var(--text,#e8eaf6); }
+.trip-detail-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px 8px; border-bottom:1px solid rgba(255,255,255,0.06); }
+.trip-detail-header h1 { font-size:1rem; font-weight:700; letter-spacing:0.02em; }
+.trip-detail-body { flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:20px; }
+.trip-detail-id-row { display:flex; align-items:center; gap:12px; }
+.trip-detail-id-row h2 { font-size:1.4rem; font-weight:800; letter-spacing:0.04em; }
+.trip-detail-badge { background:#00E5FF; color:#0d1117; font-size:0.7rem; font-weight:800; padding:4px 10px; border-radius:20px; letter-spacing:0.08em; }
+/* Timeline */
+.trip-timeline { display:flex; flex-direction:column; gap:0; }
+.timeline-item { display:flex; gap:12px; }
+.timeline-dot-col { display:flex; flex-direction:column; align-items:center; }
+.timeline-dot { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.08); border:2px solid rgba(255,255,255,0.15); flex-shrink:0; }
+.timeline-item.done .timeline-dot { background:#1a3a2a; border-color:#22c55e; color:#22c55e; }
+.timeline-item.active .timeline-dot { background:#003344; border-color:#00E5FF; color:#00E5FF; box-shadow:0 0 12px rgba(0,229,255,0.4); }
+.timeline-line { width:2px; flex:1; min-height:20px; background:rgba(255,255,255,0.1); margin:2px 0; }
+.timeline-item.done .timeline-line { background:#22c55e; opacity:0.4; }
+.timeline-content { padding-bottom:16px; }
+.timeline-content strong { display:block; font-size:0.9rem; font-weight:600; }
+.timeline-content span { font-size:0.78rem; color:rgba(255,255,255,0.5); }
+.timeline-item.active .timeline-content strong { color:#00E5FF; }
+/* Info card */
+.trip-detail-info { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:14px; }
+.trip-detail-info h3 { font-size:0.85rem; font-weight:700; color:rgba(255,255,255,0.5); text-transform:uppercase; letter-spacing:0.08em; margin:0; }
+.trip-detail-vehicle-row { display:flex; justify-content:space-between; align-items:center; }
+.trip-detail-vehicle-row strong { display:block; font-size:0.95rem; font-weight:700; }
+.trip-detail-plate { font-size:0.8rem; color:rgba(255,255,255,0.5); }
+.trip-detail-car-thumb { width:60px; height:40px; background:rgba(255,255,255,0.06); border-radius:8px; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.3); }
+.trip-detail-label { display:block; font-size:0.72rem; color:rgba(255,255,255,0.45); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:2px; }
+.trip-detail-route { display:flex; flex-direction:column; gap:10px; }
+.trip-detail-route-item { display:flex; gap:10px; align-items:flex-start; }
+.trip-detail-route-item strong { font-size:0.9rem; }
+.origin-pin { color:#00E5FF; margin-top:2px; flex-shrink:0; }
+.dest-pin { color:#C9F02A; margin-top:2px; flex-shrink:0; }
+/* Actions */
+.trip-detail-actions { display:flex; gap:10px; padding:16px 20px; border-top:1px solid rgba(255,255,255,0.06); }
+.trip-detail-actions .secondary { flex:1; }
+.trip-detail-actions .primary { flex:1.4; }
+`;
+
+function TripDetailStyles() {
+  return <style dangerouslySetInnerHTML={{ __html: tripDetailCSS }} />;
+}
+
 function BottomNav({ active, setActive }: { active: Tab; setActive: (tab: Tab) => void }) {
   const tabs = [
     { id: "panel" as const, label: "Inicio", icon: <LayoutDashboard size={18} /> },
