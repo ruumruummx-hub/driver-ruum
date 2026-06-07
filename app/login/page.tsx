@@ -86,17 +86,23 @@ export default function LoginPage() {
       password,
     })
 
-    if (authError || !authData.user) {
-      setMessage(authError?.message ?? 'No pudimos crear tu cuenta.')
+    if (authError) {
+      setMessage(authError.message ?? 'No pudimos crear tu cuenta.')
       setLoading(false)
       return
     }
 
-    // Crear registro en drivers
+    const authUser = authData.user ?? authData.session?.user
+    if (!authUser) {
+      setMessage('Revisa tu correo para confirmar tu cuenta y luego completa el registro de conductor.')
+      setLoading(false)
+      return
+    }
+
     const { error: insertError } = await supabase
       .from('drivers')
       .insert({
-        auth_id: authData.user.id,
+        auth_id: authUser.id,
         name: email.split('@')[0],
         email: email.trim(),
         status: 'pendiente_validacion',
@@ -106,10 +112,13 @@ export default function LoginPage() {
       })
 
     if (insertError) {
-      setMessage('Cuenta creada. Completa tu perfil al ingresar.')
-    } else {
-      setMessage('Cuenta creada. Un administrador validará tu perfil antes de asignarte viajes.')
+      await supabase.auth.signOut()
+      setMessage(`No pudimos guardar tu perfil de conductor: ${insertError.message}`)
+      setLoading(false)
+      return
     }
+
+    setMessage('Cuenta creada. Un administrador validará tu perfil antes de asignarte viajes.')
     setLoading(false)
   }
 
