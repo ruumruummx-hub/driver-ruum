@@ -586,14 +586,21 @@ function Trips({
         </button>
         <h1>Tus viajes</h1>
       </header>
+
+      {/* ── Tabs: Ofertas / Aceptados ── */}
       <div className="segmented">
-        <button className={active === "ofertas" ? "selected" : ""} onClick={() => setActive("ofertas")}>
-          Activos
+        <button
+          className={active === "ofertas" ? "selected" : ""}
+          onClick={() => setActive("ofertas")}
+        >
+          Ofertas
         </button>
-        <button className={active === "aceptados" ? "selected" : ""} onClick={() => setActive("aceptados")}>
-          Completados
+        <button
+          className={active === "aceptados" ? "selected" : ""}
+          onClick={() => setActive("aceptados")}
+        >
+          Aceptados
         </button>
-        <button>Cancelados</button>
       </div>
 
       {active === "ofertas" ? (
@@ -1216,6 +1223,17 @@ function SettingsScreen({ onBack }: { onBack: () => void }) {
         <XCircle size={18} />
         Eliminar cuenta
       </button>
+
+      {/* ── Footer de versión ── */}
+      <footer className="profile-version-footer">
+        <span>v C2026</span>
+        <span className="profile-version-sep">·</span>
+        <span>Ruum-Ruum</span>
+        <span className="profile-version-sep">·</span>
+        <span>Moviliax</span>
+        <span className="profile-version-sep">·</span>
+        <span>HManuel Administración e Innovación Digital</span>
+      </footer>
     </section>
   );
 }
@@ -1641,9 +1659,3 @@ function BottomNav({ active, setActive }: { active: Tab; setActive: (tab: Tab) =
     </nav>
   );
 }
-
-
-
-
-
-
