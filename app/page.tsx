@@ -428,6 +428,59 @@ function AcceptedTripCard({ trip, primary, onClick }: {
 }
 
 /* ── Offer Detail ───────────────────────────────────────── */
+const offerDetailCSS = `
+.offer-detail-screen { display:flex; flex-direction:column; height:100%; background:var(--bg,#0d1117); color:var(--text,#e8eaf6); overflow:hidden; }
+.offer-detail-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px 12px; border-bottom:1px solid rgba(255,255,255,0.07); flex-shrink:0; }
+.offer-detail-header h1 { font-size:1rem; font-weight:700; letter-spacing:0.02em; }
+.offer-help-btn { background:none; border:none; color:rgba(255,255,255,0.6); cursor:pointer; padding:4px; }
+.offer-detail-body { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:14px; padding:0 0 24px; }
+
+/* Mapa */
+.offer-map-preview { position:relative; height:160px; background:linear-gradient(135deg,#0a1628 0%,#0d2137 50%,#0a1628 100%); overflow:hidden; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+.offer-map-preview .map-label { position:absolute; top:10px; left:50%; transform:translateX(-50%); font-size:0.62rem; font-weight:700; letter-spacing:0.12em; color:rgba(255,255,255,0.45); background:rgba(0,0,0,0.4); padding:3px 10px; border-radius:20px; white-space:nowrap; z-index:2; }
+.offer-map-preview .road { position:absolute; background:rgba(0,229,255,0.15); border-radius:4px; }
+.offer-map-preview .road.one { width:120%; height:3px; top:42%; left:-10%; transform:rotate(-8deg); }
+.offer-map-preview .road.two { width:3px; height:80%; left:38%; top:10%; }
+.offer-map-preview .road.three { width:120%; height:2px; top:65%; left:-10%; transform:rotate(5deg); background:rgba(201,240,42,0.1); }
+.offer-map-expand { position:absolute; bottom:10px; right:12px; background:rgba(0,229,255,0.15); border:1px solid rgba(0,229,255,0.3); color:#00E5FF; border-radius:8px; padding:6px 10px; cursor:pointer; display:flex; align-items:center; gap:4px; font-size:0.72rem; font-weight:600; }
+
+/* CTAs */
+.offer-cta-block { display:flex; flex-direction:column; gap:10px; padding:0 16px; }
+.offer-accept-btn { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:14px; background:#00E5FF; color:#0d1117; border:none; border-radius:12px; font-size:0.95rem; font-weight:800; letter-spacing:0.08em; cursor:pointer; }
+.offer-reject-btn { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:12px; background:transparent; color:rgba(255,255,255,0.55); border:1px solid rgba(255,255,255,0.15); border-radius:12px; font-size:0.85rem; font-weight:600; letter-spacing:0.06em; cursor:pointer; }
+
+/* Notas */
+.offer-notes-card { margin:0 16px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; overflow:hidden; }
+.offer-notes-toggle { display:flex; align-items:center; justify-content:space-between; width:100%; padding:12px 16px; background:none; border:none; color:inherit; cursor:pointer; }
+.offer-notes-title { font-size:0.75rem; font-weight:700; letter-spacing:0.1em; color:rgba(255,255,255,0.5); }
+.offer-notes-body { padding:0 16px 14px; display:flex; flex-direction:column; gap:8px; }
+.offer-notes-body p { font-size:0.82rem; line-height:1.55; color:rgba(255,255,255,0.7); margin:0; }
+
+/* Badge compartido */
+.offer-shared-badge { margin:0 16px; display:flex; align-items:center; gap:6px; background:rgba(201,240,42,0.08); border:1px solid rgba(201,240,42,0.2); border-radius:8px; padding:8px 12px; }
+.offer-shared-badge span { font-size:0.72rem; font-weight:700; letter-spacing:0.08em; color:#C9F02A; }
+.offer-shared-badge svg { color:#C9F02A; flex-shrink:0; }
+
+/* Paradas */
+.offer-stops { margin:0 16px; display:flex; flex-direction:column; gap:0; }
+.offer-stop { display:flex; gap:12px; align-items:flex-start; }
+.offer-stop-num { width:28px; height:28px; border-radius:50%; background:#00E5FF; color:#0d1117; font-size:0.8rem; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px; }
+.offer-stop-connector { display:flex; flex-direction:column; align-items:center; width:28px; flex-shrink:0; }
+.offer-stop-line { width:2px; height:32px; background:rgba(0,229,255,0.25); margin:4px 0; }
+.offer-stop-content { flex:1; padding-bottom:16px; }
+.offer-stop-content h3 { font-size:0.92rem; font-weight:700; margin:0 0 2px; }
+.offer-stop-city { font-size:0.78rem; color:rgba(255,255,255,0.5); margin:0 0 6px; }
+.offer-stop-detail { display:flex; align-items:flex-start; gap:6px; font-size:0.78rem; color:rgba(255,255,255,0.6); margin-bottom:3px; }
+.offer-stop-detail svg { flex-shrink:0; margin-top:1px; opacity:0.6; }
+
+/* Métricas */
+.offer-metrics { margin:0 16px; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.offer-metric { display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); border-radius:10px; padding:10px 12px; font-size:0.82rem; color:rgba(255,255,255,0.7); }
+.offer-metric svg { opacity:0.6; flex-shrink:0; }
+.offer-metric-pay { background:rgba(0,229,255,0.08); border-color:rgba(0,229,255,0.2); color:#00E5FF; font-weight:700; }
+.offer-metric-pay svg { opacity:1; }
+`;
+
 function OfferDetail({ onBack, onAccept, onReject }: {
   onBack: () => void; onAccept: () => void; onReject: () => void;
 }) {
@@ -435,6 +488,7 @@ function OfferDetail({ onBack, onAccept, onReject }: {
 
   return (
     <section className="screen offer-detail-screen">
+      <style dangerouslySetInnerHTML={{ __html: offerDetailCSS }} />
       <header className="offer-detail-header">
         <button className="icon-button" onClick={onBack} aria-label="Volver"><ArrowLeft size={28} strokeWidth={3} /></button>
         <h1>Viaje #{offerTrip.id}</h1>
