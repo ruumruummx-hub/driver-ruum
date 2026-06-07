@@ -1,5 +1,5 @@
 "use client";
-
+ 
 import React, { Fragment, useState } from "react";
 import {
   ArrowLeft,
@@ -35,7 +35,7 @@ import {
   X,
   XCircle
 } from "lucide-react";
-
+ 
 type Tab = "panel" | "viajes" | "dinero" | "config" | "soporte";
 type TripTab = "ofertas" | "aceptados";
 type FlowStep =
@@ -54,10 +54,10 @@ type FlowStep =
   | "destinationArrival"
   | "tripIncident"
   | "done";
-
+ 
 type EvidencePhase = "inicial" | "durante" | "entrega";
 type EvidencePhaseTab = "inicial" | "durante" | "entrega";
-
+ 
 const evidenceSteps = [
   {
     title: "Número VIN",
@@ -90,7 +90,7 @@ const evidenceSteps = [
     fields: ["Sin observaciones"]
   }
 ];
-
+ 
 const offerTrip = {
   id: "3465791",
   route: "KAVAK LERMA 1",
@@ -125,7 +125,7 @@ const offerTrip = {
     }
   ]
 };
-
+ 
 const acceptedTrips = [
   {
     id: "3543025",
@@ -150,7 +150,7 @@ const acceptedTrips = [
     pay: "$447.72"
   }
 ];
-
+ 
 export default function Home() {
   const [isAuthed, setIsAuthed] = useState(false);
   const [tab, setTab] = useState<Tab>("panel");
@@ -159,29 +159,26 @@ export default function Home() {
   const [acceptedOffer, setAcceptedOffer] = useState(false);
   const [evidenceIndex, setEvidenceIndex] = useState(0);
   const [evidencePhase, setEvidencePhase] = useState<EvidencePhase>("inicial");
-
+ 
   if (!isAuthed) {
     return <Onboarding onEnter={() => setIsAuthed(true)} />;
   }
-
+ 
   const goPanel = () => { setTab("panel"); setFlow(null); };
-
+ 
   const openSummary = () => {
     setFlow("summary");
   };
-
+ 
   const acceptOffer = () => {
     setAcceptedOffer(true);
     setTripTab("aceptados");
     setFlow(null);
   };
-
+ 
   const content = (() => {
     if (flow === "tripDetail") {
       return <TripDetail onBack={goPanel} onRoute={() => setFlow("originMap")} onIncident={() => setFlow("tripIncident")} />;
-    }
-    if (flow === "incident") {
-      return <IncidentReport onBack={() => setFlow("tripDetail")} onSent={() => setFlow("tripDetail")} />;
     }
     if (flow === "offerDetail") {
       return <OfferDetail onBack={() => setFlow(null)} onAccept={acceptOffer} onReject={() => setFlow(null)} />;
@@ -202,7 +199,8 @@ export default function Home() {
       );
     }
     if (flow === "tripIncident") {
-      return <IncidentReport onBack={() => setFlow("tripDetail")} onSent={() => setFlow("tripDetail")} />;    }
+      return <IncidentReport onBack={() => setFlow("tripDetail")} onSent={() => setFlow("tripDetail")} />;
+    }
     if (flow === "incident") {
       return <IncidentReport onBack={() => setFlow("locate")} onSent={() => setFlow("locate")} />;
     }
@@ -231,7 +229,7 @@ export default function Home() {
     if (flow === "done") {
       return <DoneScreen onPanel={goPanel} />;
     }
-
+ 
     if (tab === "panel") {
       return <Panel onMoney={() => setTab("dinero")} onSettings={() => setTab("config")} hasTrip={acceptedOffer} onTrip={() => setFlow("tripDetail")} onContact={() => setTab("contacto" as Tab)} onSupport={() => setTab("soporte")} />;
     }
@@ -253,7 +251,7 @@ export default function Home() {
     if ((tab as string) === "contacto") return <ContactScreen onBack={() => setTab("panel")} />;
     return <SettingsScreen onBack={() => setTab("panel")} />;
   })();
-
+ 
   return (
     <main className="shell">
       <div className="phone">
@@ -265,28 +263,28 @@ export default function Home() {
     </main>
   );
 }
-
+ 
 /* ── Onboarding ─────────────────────────────────────────── */
 function Onboarding({ onEnter }: { onEnter: () => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("Ingresa con tus datos de conductor.");
-
+ 
   const hasEmail = email.trim().includes("@");
   const hasPassword = password.trim().length >= 6;
-
+ 
   const submit = (mode: "login" | "signup") => {
     if (!hasEmail) { setMessage("Escribe un correo válido para continuar."); return; }
     if (!hasPassword) { setMessage("La contraseña debe tener al menos 6 caracteres."); return; }
     setMessage(mode === "login" ? "Acceso correcto." : "Cuenta creada correctamente.");
     onEnter();
   };
-
+ 
   const recover = () => {
     if (!hasEmail) { setMessage("Escribe tu correo para enviarte la recuperación."); return; }
     setMessage(`Enviamos instrucciones a ${email.trim()}.`);
   };
-
+ 
   return (
     <main className="shell auth-shell">
       <section className="auth-window" aria-label="Inicio de sesión">
@@ -322,7 +320,7 @@ function Onboarding({ onEnter }: { onEnter: () => void }) {
     </main>
   );
 }
-
+ 
 /* ── Shared UI ──────────────────────────────────────────── */
 function FlowHeader({ title, onBack }: { title: string; onBack: () => void }) {
   return (
@@ -333,7 +331,7 @@ function FlowHeader({ title, onBack }: { title: string; onBack: () => void }) {
     </header>
   );
 }
-
+ 
 /* ── Panel ──────────────────────────────────────────────── */
 function Panel({ onMoney, onSettings, onTrip, onContact, onSupport }: {
   onMoney: () => void; onSettings: () => void; hasTrip: boolean;
@@ -378,7 +376,7 @@ function Panel({ onMoney, onSettings, onTrip, onContact, onSupport }: {
     </section>
   );
 }
-
+ 
 /* ── Trips ──────────────────────────────────────────────── */
 function Trips({ active, setActive, acceptedOffer, setTab, onSettings, onOffer, onAccepted }: {
   active: TripTab; setActive: (tab: TripTab) => void; acceptedOffer: boolean;
@@ -430,7 +428,7 @@ function Trips({ active, setActive, acceptedOffer, setTab, onSettings, onOffer, 
     </section>
   );
 }
-
+ 
 function AcceptedTripCard({ trip, primary, onClick }: {
   trip: { id: string; route: string; city: string; requester: string; start: string; end: string; duration: string; distance: string; pay: string; };
   primary?: boolean; onClick: () => void;
@@ -451,7 +449,7 @@ function AcceptedTripCard({ trip, primary, onClick }: {
     </button>
   );
 }
-
+ 
 /* ── Offer Detail ───────────────────────────────────────── */
 const offerDetailCSS = `
 .offer-detail-screen { display:flex; flex-direction:column; height:100%; background:var(--bg,#0d1117); color:var(--text,#e8eaf6); overflow:hidden; }
@@ -459,7 +457,7 @@ const offerDetailCSS = `
 .offer-detail-header h1 { font-size:1rem; font-weight:700; letter-spacing:0.02em; }
 .offer-help-btn { background:none; border:none; color:rgba(255,255,255,0.6); cursor:pointer; padding:4px; }
 .offer-detail-body { flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:14px; padding:0 0 24px; }
-
+ 
 /* Mapa */
 .offer-map-preview { position:relative; height:160px; background:linear-gradient(135deg,#0a1628 0%,#0d2137 50%,#0a1628 100%); overflow:hidden; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
 .offer-map-preview .map-label { position:absolute; top:10px; left:50%; transform:translateX(-50%); font-size:0.62rem; font-weight:700; letter-spacing:0.12em; color:rgba(255,255,255,0.45); background:rgba(0,0,0,0.4); padding:3px 10px; border-radius:20px; white-space:nowrap; z-index:2; }
@@ -468,24 +466,24 @@ const offerDetailCSS = `
 .offer-map-preview .road.two { width:3px; height:80%; left:38%; top:10%; }
 .offer-map-preview .road.three { width:120%; height:2px; top:65%; left:-10%; transform:rotate(5deg); background:rgba(201,240,42,0.1); }
 .offer-map-expand { position:absolute; bottom:10px; right:12px; background:rgba(0,229,255,0.15); border:1px solid rgba(0,229,255,0.3); color:#00E5FF; border-radius:8px; padding:6px 10px; cursor:pointer; display:flex; align-items:center; gap:4px; font-size:0.72rem; font-weight:600; }
-
+ 
 /* CTAs */
 .offer-cta-block { display:flex; flex-direction:column; gap:10px; padding:0 16px; }
 .offer-accept-btn { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:14px; background:#00E5FF; color:#0d1117; border:none; border-radius:12px; font-size:0.95rem; font-weight:800; letter-spacing:0.08em; cursor:pointer; }
 .offer-reject-btn { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:12px; background:transparent; color:rgba(255,255,255,0.55); border:1px solid rgba(255,255,255,0.15); border-radius:12px; font-size:0.85rem; font-weight:600; letter-spacing:0.06em; cursor:pointer; }
-
+ 
 /* Notas */
 .offer-notes-card { margin:0 16px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:12px; overflow:hidden; }
 .offer-notes-toggle { display:flex; align-items:center; justify-content:space-between; width:100%; padding:12px 16px; background:none; border:none; color:inherit; cursor:pointer; }
 .offer-notes-title { font-size:0.75rem; font-weight:700; letter-spacing:0.1em; color:rgba(255,255,255,0.5); }
 .offer-notes-body { padding:0 16px 14px; display:flex; flex-direction:column; gap:8px; }
 .offer-notes-body p { font-size:0.82rem; line-height:1.55; color:rgba(255,255,255,0.7); margin:0; }
-
+ 
 /* Badge compartido */
 .offer-shared-badge { margin:0 16px; display:flex; align-items:center; gap:6px; background:rgba(201,240,42,0.08); border:1px solid rgba(201,240,42,0.2); border-radius:8px; padding:8px 12px; }
 .offer-shared-badge span { font-size:0.72rem; font-weight:700; letter-spacing:0.08em; color:#C9F02A; }
 .offer-shared-badge svg { color:#C9F02A; flex-shrink:0; }
-
+ 
 /* Paradas */
 .offer-stops { margin:0 16px; display:flex; flex-direction:column; gap:0; }
 .offer-stop { display:flex; gap:12px; align-items:flex-start; }
@@ -497,7 +495,7 @@ const offerDetailCSS = `
 .offer-stop-city { font-size:0.78rem; color:rgba(255,255,255,0.5); margin:0 0 6px; }
 .offer-stop-detail { display:flex; align-items:flex-start; gap:6px; font-size:0.78rem; color:rgba(255,255,255,0.6); margin-bottom:3px; }
 .offer-stop-detail svg { flex-shrink:0; margin-top:1px; opacity:0.6; }
-
+ 
 /* Métricas */
 .offer-metrics { margin:0 16px; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .offer-metric { display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); border-radius:10px; padding:10px 12px; font-size:0.82rem; color:rgba(255,255,255,0.7); }
@@ -505,12 +503,12 @@ const offerDetailCSS = `
 .offer-metric-pay { background:rgba(0,229,255,0.08); border-color:rgba(0,229,255,0.2); color:#00E5FF; font-weight:700; }
 .offer-metric-pay svg { opacity:1; }
 `;
-
+ 
 function OfferDetail({ onBack, onAccept, onReject }: {
   onBack: () => void; onAccept: () => void; onReject: () => void;
 }) {
   const [notesExpanded, setNotesExpanded] = useState(true);
-
+ 
   return (
     <section className="screen offer-detail-screen">
       <style dangerouslySetInnerHTML={{ __html: offerDetailCSS }} />
@@ -519,7 +517,7 @@ function OfferDetail({ onBack, onAccept, onReject }: {
         <h1>Viaje #{offerTrip.id}</h1>
         <button className="offer-help-btn" aria-label="Ayuda"><HelpCircle size={24} /></button>
       </header>
-
+ 
       <div className="offer-detail-body">
         {/* Mini mapa */}
         <div className="offer-map-preview">
@@ -530,7 +528,7 @@ function OfferDetail({ onBack, onAccept, onReject }: {
           <span className="road three" />
           <button className="offer-map-expand"><Navigation size={18} /></button>
         </div>
-
+ 
         {/* CTAs principales */}
         <div className="offer-cta-block">
           <button className="offer-accept-btn" onClick={onAccept}>
@@ -542,7 +540,7 @@ function OfferDetail({ onBack, onAccept, onReject }: {
             RECHAZAR VIAJE
           </button>
         </div>
-
+ 
         {/* Notas */}
         <div className="offer-notes-card">
           <button className="offer-notes-toggle" onClick={() => setNotesExpanded(e => !e)}>
@@ -557,13 +555,13 @@ function OfferDetail({ onBack, onAccept, onReject }: {
             </div>
           )}
         </div>
-
+ 
         {/* Badge viaje compartido */}
         <div className="offer-shared-badge">
           <span>VIAJE COMPARTIDO INCLUIDO.</span>
           <Info size={14} />
         </div>
-
+ 
         {/* Paradas */}
         <div className="offer-stops">
           {offerTrip.stops.map((stop, idx) => (
@@ -587,7 +585,7 @@ function OfferDetail({ onBack, onAccept, onReject }: {
             </div>
           ))}
         </div>
-
+ 
         {/* Métricas del viaje */}
         <div className="offer-metrics">
           <div className="offer-metric">
@@ -611,7 +609,7 @@ function OfferDetail({ onBack, onAccept, onReject }: {
     </section>
   );
 }
-
+ 
 /* ── Trip Summary ───────────────────────────────────────── */
 /* ── Trip Detail (viaje activo desde Panel) ─────────────── */
 const tripTimeline = [
@@ -622,7 +620,7 @@ const tripTimeline = [
   { label: "Vehículo entregado", date: "Pendiente", done: false },
   { label: "Viaje completado", date: "Pendiente", done: false },
 ];
-
+ 
 function TripDetail({ onBack, onRoute, onIncident }: {
   onBack: () => void; onRoute: () => void; onIncident: () => void;
 }) {
@@ -634,13 +632,13 @@ function TripDetail({ onBack, onRoute, onIncident }: {
         <h1>Detalle del viaje</h1>
         <button className="icon-button" aria-label="Mensajes"><Mail size={22} /></button>
       </header>
-
+ 
       <div className="trip-detail-body">
         <div className="trip-detail-id-row">
           <h2>RR-2024-0587</h2>
           <span className="trip-detail-badge">En camino</span>
         </div>
-
+ 
         {/* Timeline */}
         <div className="trip-timeline">
           {tripTimeline.map((item, idx) => (
@@ -658,7 +656,7 @@ function TripDetail({ onBack, onRoute, onIncident }: {
             </div>
           ))}
         </div>
-
+ 
         {/* Info del traslado */}
         <div className="trip-detail-info">
           <h3>Información del traslado</h3>
@@ -690,7 +688,7 @@ function TripDetail({ onBack, onRoute, onIncident }: {
           </div>
         </div>
       </div>
-
+ 
       {/* Footer actions */}
       <div className="trip-detail-actions">
         <button className="secondary" onClick={onIncident}>Reportar incidencia</button>
@@ -699,7 +697,7 @@ function TripDetail({ onBack, onRoute, onIncident }: {
     </section>
   );
 }
-
+ 
 function TripSummary({ onBack, onGo }: { onBack: () => void; onGo: () => void }) {
   return (
     <section className="screen flow-screen">
@@ -736,7 +734,7 @@ function TripSummary({ onBack, onGo }: { onBack: () => void; onGo: () => void })
     </section>
   );
 }
-
+ 
 /* ── Ready To Go ────────────────────────────────────────── */
 function ReadyToGo({ onBack, onStart }: { onBack: () => void; onStart: () => void }) {
   return (
@@ -752,7 +750,7 @@ function ReadyToGo({ onBack, onStart }: { onBack: () => void; onStart: () => voi
     </section>
   );
 }
-
+ 
 /* ── Route Map ──────────────────────────────────────────── */
 function RouteMap({ kind, onBack, onArrive }: { kind: "origin" | "destination"; onBack: () => void; onArrive: () => void }) {
   const isOrigin = kind === "origin";
@@ -772,7 +770,7 @@ function RouteMap({ kind, onBack, onArrive }: { kind: "origin" | "destination"; 
     </section>
   );
 }
-
+ 
 /* ── Locate Vehicle ─────────────────────────────────────── */
 function LocateVehicle({ onBack, onFound, onNotFound, isDelivery }: {
   onBack: () => void; onFound: () => void; onNotFound: () => void; isDelivery?: boolean;
@@ -800,7 +798,7 @@ function LocateVehicle({ onBack, onFound, onNotFound, isDelivery }: {
     </section>
   );
 }
-
+ 
 /* ── Evidence Flow ──────────────────────────────────────── */
 function EvidenceFlow({ index, onBack, onNext }: { index: number; onBack: () => void; onNext: () => void }) {
   const step = evidenceSteps[index];
@@ -824,7 +822,7 @@ function EvidenceFlow({ index, onBack, onNext }: { index: number; onBack: () => 
     </section>
   );
 }
-
+ 
 /* ── Destination Arrival ────────────────────────────────── */
 function DestinationArrival({ onBack, onDone }: { onBack: () => void; onDone: () => void }) {
   return (
@@ -840,7 +838,7 @@ function DestinationArrival({ onBack, onDone }: { onBack: () => void; onDone: ()
     </section>
   );
 }
-
+ 
 /* ── Done ───────────────────────────────────────────────── */
 function DoneScreen({ onPanel }: { onPanel: () => void }) {
   return (
@@ -852,7 +850,7 @@ function DoneScreen({ onPanel }: { onPanel: () => void }) {
     </section>
   );
 }
-
+ 
 /* ── Map Preview ────────────────────────────────────────── */
 function MapPreview() {
   return (
@@ -866,7 +864,7 @@ function MapPreview() {
     </div>
   );
 }
-
+ 
 /* ── Money ──────────────────────────────────────────────── */
 function Money({ setTab }: { setTab: (tab: Tab) => void }) {
   return (
@@ -915,7 +913,7 @@ function Money({ setTab }: { setTab: (tab: Tab) => void }) {
     </section>
   );
 }
-
+ 
 /* ── Settings ───────────────────────────────────────────── */
 function ProfileField({ label, value, placeholder }: { label: string; value?: string; placeholder?: string }) {
   return (
@@ -925,11 +923,11 @@ function ProfileField({ label, value, placeholder }: { label: string; value?: st
     </div>
   );
 }
-
+ 
 function SettingsScreen({ onBack }: { onBack: () => void }) {
   const [openSection, setOpenSection] = useState<string | null>(null);
   const toggle = (s: string) => setOpenSection(openSection === s ? null : s);
-
+ 
   return (
     <section className="screen profile-screen">
       <header className="profile-header">
@@ -945,7 +943,7 @@ function SettingsScreen({ onBack }: { onBack: () => void }) {
           <strong><CheckCircle2 size={13} /> Conductor certificado</strong>
         </div>
       </section>
-
+ 
       <section className="profile-section">
         <h2>Información personal</h2>
         <div className="profile-list">
@@ -983,7 +981,7 @@ function SettingsScreen({ onBack }: { onBack: () => void }) {
           </article>
         </div>
       </section>
-
+ 
       <section className="profile-section">
         <h2>Tus documentos</h2>
         <div className="profile-list">
@@ -1036,7 +1034,7 @@ function SettingsScreen({ onBack }: { onBack: () => void }) {
           </article>
         </div>
       </section>
-
+ 
       <section className="profile-section">
         <h2>Preferencias</h2>
         <div className="profile-list">
@@ -1061,7 +1059,7 @@ function SettingsScreen({ onBack }: { onBack: () => void }) {
           </article>
         </div>
       </section>
-
+ 
       <section className="profile-section">
         <h2>FAQs y documentación</h2>
         <div className="profile-list compact">
@@ -1074,9 +1072,9 @@ function SettingsScreen({ onBack }: { onBack: () => void }) {
           ))}
         </div>
       </section>
-
+ 
       <button className="delete-account"><XCircle size={18} />Eliminar cuenta</button>
-
+ 
       <footer className="profile-version-footer">
         <span>v C2026</span>
         <span className="profile-version-sep">·</span>
@@ -1089,7 +1087,7 @@ function SettingsScreen({ onBack }: { onBack: () => void }) {
     </section>
   );
 }
-
+ 
 /* ── Contact ────────────────────────────────────────────── */
 function ContactScreen({ onBack }: { onBack: () => void }) {
   return (
@@ -1124,10 +1122,10 @@ function ContactScreen({ onBack }: { onBack: () => void }) {
     </section>
   );
 }
-
+ 
 /* ── Support Chat ───────────────────────────────────────── */
 const SUPPORT_MESSAGES = [{ from: "agent", text: "¡Hola! Soy parte del equipo de soporte Ruum Ruum. ¿En qué te puedo ayudar hoy?" }];
-
+ 
 function SupportChat({ onBack }: { onBack: () => void }) {
   const [messages, setMessages] = useState(SUPPORT_MESSAGES);
   const [input, setInput] = useState("");
@@ -1175,7 +1173,7 @@ function SupportChat({ onBack }: { onBack: () => void }) {
     </section>
   );
 }
-
+ 
 /* ── Evidence Capture ───────────────────────────────────── */
 const evidenceSections = {
   inicial: [
@@ -1193,7 +1191,7 @@ const evidenceSections = {
     { label: "Kilometraje final", photos: ["Odómetro"] }
   ]
 };
-
+ 
 function EvidenceCapture({ phase, onBack, onDone }: { phase: EvidencePhaseTab; onBack: () => void; onDone: () => void }) {
   const [activeTab, setActiveTab] = useState<EvidencePhaseTab>(phase);
   const [capturedPhotos, setCapturedPhotos] = useState<Record<string, boolean>>({});
@@ -1245,10 +1243,10 @@ function EvidenceCapture({ phase, onBack, onDone }: { phase: EvidencePhaseTab; o
     </section>
   );
 }
-
+ 
 /* ── Incident Report ────────────────────────────────────── */
 const incidentReasons = ["Accidente / Daño", "Problema mecánico", "Tráfico / Bloqueo", "Condiciones del camino", "Otro"];
-
+ 
 function IncidentReport({ onBack, onSent }: { onBack: () => void; onSent: () => void }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [note, setNote] = useState("");
@@ -1307,7 +1305,7 @@ function IncidentReport({ onBack, onSent }: { onBack: () => void; onSent: () => 
     </section>
   );
 }
-
+ 
 /* ── Bottom Nav ─────────────────────────────────────────── */
 /* ── Trip Detail Styles ─────────────────────────────────── */
 // Injected via <style> tag inside TripDetail — no globals.css dependency
@@ -1350,11 +1348,11 @@ const tripDetailCSS = `
 .trip-detail-actions .secondary { flex:1; }
 .trip-detail-actions .primary { flex:1.4; }
 `;
-
+ 
 function TripDetailStyles() {
   return <style dangerouslySetInnerHTML={{ __html: tripDetailCSS }} />;
 }
-
+ 
 function BottomNav({ active, setActive }: { active: Tab; setActive: (tab: Tab) => void }) {
   const tabs = [
     { id: "panel" as const, label: "Inicio", icon: <LayoutDashboard size={18} /> },
@@ -1373,3 +1371,4 @@ function BottomNav({ active, setActive }: { active: Tab; setActive: (tab: Tab) =
     </nav>
   );
 }
+ 
