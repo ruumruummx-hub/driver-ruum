@@ -29,32 +29,35 @@ export interface TripOffer {
 }
 
 // ── Mapa de filas DB → TripOffer ───────────────────────────────────────────────
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function rowToOffer(row: any): TripOffer {
+function rowToOffer(row: Record<string, unknown>): TripOffer {
+  const s = (k: string) => (row[k] as string | null) ?? null
+  const n = (k: string) => (row[k] as number | null) ?? null
   return {
-    id: row.id,
-    status: row.status,
-    originAddress: row.origin_address,
-    destinationAddress: row.destination_address,
-    vehicleBrand: row.vehicle_brand,
-    vehicleModel: row.vehicle_model,
-    vehiclePlates: row.vehicle_plates,
-    vehicleVin: row.vehicle_vin,
-    vehicleYear: row.vehicle_year,
-    vehicleColor: row.vehicle_color,
-    distanceKm: row.distance_km,
-    driverPayMxn: row.driver_pay_mxn,
-    scheduledAt: row.scheduled_at,
-    originContactName: row.origin_contact_name,
-    originContactPhone: row.origin_contact_phone,
-    destContactName: row.dest_contact_name,
-    destContactPhone: row.dest_contact_phone,
-    specialInstructions: row.special_instructions,
-    userId: row.user_id,
+    id: row.id as string,
+    status: row.status as string,
+    originAddress: row.origin_address as string,
+    destinationAddress: row.destination_address as string,
+    vehicleBrand: s('vehicle_brand'),
+    vehicleModel: s('vehicle_model'),
+    vehiclePlates: s('vehicle_plates'),
+    vehicleVin: s('vehicle_vin'),
+    vehicleYear: n('vehicle_year'),
+    vehicleColor: s('vehicle_color'),
+    distanceKm: n('distance_km'),
+    driverPayMxn: n('driver_pay_mxn'),
+    scheduledAt: s('scheduled_at'),
+    originContactName: s('origin_contact_name'),
+    originContactPhone: s('origin_contact_phone'),
+    destContactName: s('dest_contact_name'),
+    destContactPhone: s('dest_contact_phone'),
+    specialInstructions: s('special_instructions'),
+    userId: row.user_id as string,
   }
 }
 
-// ── Hook principal ─────────────────────────────────────────────────────────────
+import type { Database } from './database.types'
+
+type TripStatus = Database['public']['Enums']['trip_status']
 export function useDriver() {
   const { driver } = useAuthStore()
   const { activeTrip, offeredTrips, setActiveTrip, setOfferedTrips } = useTripStore()
@@ -88,7 +91,7 @@ export function useDriver() {
       'conductor_asignado', 'conductor_en_camino', 'recoleccion_proceso',
       'evidencia_inicial_pendiente', 'traslado_curso', 'entrega_proceso',
       'evidencia_final_pendiente',
-    ]
+    ] as const
 
     const { data: active, error: activeErr } = await supabase
       .from('trips')
@@ -147,8 +150,8 @@ export function useDriver() {
   // ── Avanzar estado del viaje ───────────────────────────────────────────────
   const advanceTripStatus = useCallback(async (
     tripId: string,
-    newStatus: string,
-    expectedStatus?: string
+    newStatus: TripStatus,
+    expectedStatus?: TripStatus
   ): Promise<{ ok: boolean; error?: string }> => {
     const supabase = createClient()
     const { data, error } = await supabase.rpc('update_trip_status_atomic', {
