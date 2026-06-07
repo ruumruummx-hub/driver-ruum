@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import React, { Fragment, useState } from "react";
 import {
   ArrowLeft,
   BadgeDollarSign,
@@ -34,7 +34,7 @@ import {
   XCircle
 } from "lucide-react";
 
-type Tab = "panel" | "viajes" | "dinero" | "config";
+type Tab = "panel" | "viajes" | "dinero" | "config" | "soporte";
 type TripTab = "ofertas" | "aceptados";
 type FlowStep =
   | "offerDetail"
@@ -52,6 +52,7 @@ type FlowStep =
   | "done";
 
 type EvidencePhase = "inicial" | "durante" | "entrega";
+type EvidencePhaseTab = "inicial" | "durante" | "entrega";
 
 const week = [
   ["Vi", "13"],
@@ -67,13 +68,13 @@ const evidenceSteps = [
   {
     title: "Número VIN",
     eyebrow: "Paso 1 de 5",
-    body: "Confirma que el VIN del vehículo coincida antes de iniciar el traslado.",
+    body: "Confirma que el VIN coincida antes de iniciar el traslado.",
     fields: ["LSGKB54H5KV225363"]
   },
   {
     title: "Placas y combustible",
     eyebrow: "Paso 2 de 5",
-    body: "Registra placas visibles y nivel aproximado de combustible.",
+    body: "Registra placas visibles y nivel de combustible.",
     fields: ["NMX-8421", "Combustible: 68%"]
   },
   {
@@ -83,7 +84,7 @@ const evidenceSteps = [
     fields: ["Frente", "Lado conductor", "Trasera", "Lado copiloto", "Tablero", "Agregar más"]
   },
   {
-    title: "Cantidad de llaves",
+    title: "Llaves recibidas",
     eyebrow: "Paso 4 de 5",
     body: "Indica cuántas llaves recibiste del vehículo.",
     fields: ["2 llaves"]
@@ -91,14 +92,14 @@ const evidenceSteps = [
   {
     title: "Nota de recogida",
     eyebrow: "Paso 5 de 5",
-    body: "Agrega una nota opcional para dejar contexto de la recogida.",
+    body: "Agrega una nota opcional para dejar contexto.",
     fields: ["Sin observaciones"]
   }
 ];
 
 const menu = [
   {
-    title: "Documentos Personales",
+    title: "Tus documentos",
     items: ["Licencia de Conducir", "Seguro", "Comprobante de Domicilio", "Constancia Fiscal"]
   },
   {
@@ -276,7 +277,7 @@ export default function Home() {
     }
 
     if (tab === "panel") {
-      return <Panel onMoney={() => setTab("dinero")} onSettings={() => setTab("config")} hasTrip={acceptedOffer} onTrip={openSummary} />;
+      return <Panel onMoney={() => setTab("dinero")} onSettings={() => setTab("config")} hasTrip={acceptedOffer} onTrip={openSummary} onContact={() => setTab("contacto" as Tab)} onSupport={() => setTab("soporte")} />;
     }
     if (tab === "viajes") {
       return (
@@ -294,14 +295,20 @@ export default function Home() {
     if (tab === "dinero") {
       return <Money setTab={setTab} />;
     }
-    return <SettingsScreen />;
+    if (tab === "soporte") {
+      return <SupportChat onBack={() => setTab("panel")} />;
+    }
+    if ((tab as string) === "contacto") {
+      return <ContactScreen onBack={() => setTab("panel")} />;
+    }
+    return <SettingsScreen onBack={() => setTab("panel")} />;
   })();
 
   return (
     <main className="shell">
       <div className="phone">
         {content}
-        {tab !== "panel" && tab !== "dinero" && flow !== "offerDetail" && flow !== "done" && (
+        {!flow && tab !== "config" && (tab as string) !== "contacto" && (
           <BottomNav active={tab} setActive={setTab} />
         )}
       </div>
@@ -332,7 +339,7 @@ function Onboarding({ onEnter }: { onEnter: () => void }) {
 
   const recover = () => {
     if (!hasEmail) {
-      setMessage("Escribe tu correo para enviarte recuperación.");
+      setMessage("Escribe tu correo para enviarte la recuperación.");
       return;
     }
     setMessage(`Enviamos instrucciones a ${email.trim()}.`);
@@ -343,13 +350,13 @@ function Onboarding({ onEnter }: { onEnter: () => void }) {
       <section className="auth-window" aria-label="Inicio de sesión">
         <div className="auth-brand">
           <div className="ruum-logo" aria-label="Ruum Ruum by Moviliax">
-            <strong>ruum</strong>
-            <strong>ruum</strong>
+            <strong>RUUM</strong>
+            <strong>RUUM</strong>
             <small>BY MOVILIAX</small>
           </div>
           <span>CONDUCTOR</span>
-          <h1>Tu app para mover vehículos con confianza.</h1>
-          <p>Recibe solicitudes, registra evidencia y completa traslados de forma segura y profesional.</p>
+          <h1>Acepta viajes. Carga evidencia. Cobra con claridad.</h1>
+          <p>Conductores certificados. Viajes documentados. Control total.</p>
           <em>{message}</em>
         </div>
 
@@ -446,7 +453,7 @@ function FlowHeader({ title, onBack }: { title: string; onBack: () => void }) {
         <ArrowLeft size={34} strokeWidth={3.4} />
       </button>
       <h1>{title}</h1>
-      <HelpCircle size={34} fill="#777" color="#777" />
+      <HelpCircle size={34} fill="#333" color="#333" />
     </header>
   );
 }
@@ -454,19 +461,21 @@ function FlowHeader({ title, onBack }: { title: string; onBack: () => void }) {
 function Panel({
   onMoney,
   onSettings,
-  onTrip
+  onTrip,
+  onContact,
+  onSupport
 }: {
   onMoney: () => void;
   onSettings: () => void;
   hasTrip: boolean;
   onTrip: () => void;
+  onContact: () => void;
+  onSupport: () => void;
 }) {
   return (
     <section className="screen panel-screen">
       <header className="panel-top">
-        <button className="panel-icon-button" aria-label="Abrir menú">
-          <Menu size={22} />
-        </button>
+        <div className="panel-brand">Ruum Ruum</div>
         <button className="panel-settings-btn" aria-label="Configuración" onClick={onSettings}>
           <Settings size={22} />
         </button>
@@ -483,7 +492,7 @@ function Panel({
       <button className="panel-trip-card" onClick={onTrip}>
         <div className="panel-trip-head">
           <div>
-            <h2>Viaje asignado</h2>
+            <h2>Tu viaje activo</h2>
             <strong>RR-2024-0587</strong>
           </div>
           <span>En camino</span>
@@ -495,7 +504,7 @@ function Panel({
             <b>Ciudad de México, CDMX</b>
           </div>
           <div className="panel-trip-price">
-            <small>Tarifa</small>
+            <small>Tu tarifa</small>
             <b>$3,850.00</b>
           </div>
           <div>
@@ -513,26 +522,26 @@ function Panel({
       <div className="quick-actions">
         <h2>Acciones rápidas</h2>
         <div className="quick-grid">
-          <button>
-            <span className="quick-icon blue">
+          <button onClick={onContact}>
+            <span className="quick-icon cyan">
               <Phone size={22} />
             </span>
-            <strong>Datos de contacto</strong>
+            <strong>Contacto</strong>
           </button>
           <button onClick={onTrip}>
-            <span className="quick-icon blue">
+            <span className="quick-icon cyan">
               <Map size={22} />
             </span>
-            <strong>Mis viajes</strong>
+            <strong>Tus viajes</strong>
           </button>
           <button onClick={onMoney}>
-            <span className="quick-icon green">
+            <span className="quick-icon lime">
               <BadgeDollarSign size={22} />
             </span>
-            <strong>Ganancias</strong>
+            <strong>Tu próximo depósito</strong>
           </button>
-          <button>
-            <span className="quick-icon orange">
+          <button onClick={onSupport}>
+            <span className="quick-icon slate">
               <HelpCircle size={22} />
             </span>
             <strong>Soporte</strong>
@@ -575,7 +584,7 @@ function Trips({
         <button className="icon-button" onClick={() => setTab("panel")} aria-label="Volver">
           <ArrowLeft size={22} />
         </button>
-        <h1>Mis viajes</h1>
+        <h1>Tus viajes</h1>
       </header>
       <div className="segmented">
         <button className={active === "ofertas" ? "selected" : ""} onClick={() => setActive("ofertas")}>
@@ -695,7 +704,7 @@ function OfferDetail({
       <TripDetails />
       <div className="notice-card">
         <h2>Oferta de viaje</h2>
-        <p>Revisa la ruta y las tareas. Al aceptar, este viaje aparecerá en la pestaña de viajes aceptados.</p>
+        <p>Revisa la ruta y las tareas. Al aceptar, este viaje aparece en tus viajes activos.</p>
       </div>
       <div className="action-row fixed-actions">
         <button className="secondary" onClick={onReject}>
@@ -734,8 +743,7 @@ function TripSummary({ onBack, onGo }: { onBack: () => void; onGo: () => void })
       <div className="notes-card">
         <h3>NOTAS</h3>
         <p>
-          The trip starts at 9:00 AM. Estimated mileage is {offerTrip.distance} and should take around 8 hours
-          to complete.
+          El traslado inicia a las 9:00 AM. Distancia estimada: {offerTrip.distance}. Duración aproximada: 8 horas. Confirma evidencia inicial antes de salir.
         </p>
       </div>
       <div className="action-row">
@@ -799,20 +807,20 @@ function RouteMap({
 function LocateVehicle({ onBack, onFound, onNotFound, isDelivery }: { onBack: () => void; onFound: () => void; onNotFound: () => void; isDelivery?: boolean }) {
   return (
     <section className="screen flow-screen locate-screen">
-      <FlowHeader title={isDelivery ? "Confirmar entrega" : "Localizar Vehículo"} onBack={onBack} />
-      <p className="soft">{isDelivery ? "Estás entregando un" : "Estas buscando un"}</p>
+      <FlowHeader title={isDelivery ? "Confirmar entrega" : "Localizar vehículo"} onBack={onBack} />
+      <p className="soft">{isDelivery ? "Estás entregando un" : "Estás buscando un"}</p>
       <h2>{offerTrip.vehicle}</h2>
       <h3>Número de VIN</h3>
       <p className="vin">{offerTrip.vin}</p>
       <div className="vehicle-example">
-        <div className="car-sketch">No Vehicle Image Available</div>
+        <div className="car-sketch">Sin imagen disponible</div>
         <p>
           <strong>Imagen de ejemplo</strong>
-          El vehículo puede que tenga una apariencia diferente.
+          El vehículo puede tener una apariencia diferente.
         </p>
       </div>
       <p className="soft">
-        Necesitarás el número VIN en el próximo paso. Por favor, asegúrate de que coincida con el vehículo que
+        Necesitarás el VIN en el siguiente paso. Asegúrate de que coincida con el vehículo que
         {isDelivery ? " vas a entregar." : " vas a recoger."}
       </p>
       <div className="instructions">
@@ -839,7 +847,7 @@ function EvidenceFlow({
   const step = evidenceSteps[index];
   return (
     <section className="screen flow-screen evidence-screen">
-      <FlowHeader title="Evidencias" onBack={onBack} />
+      <FlowHeader title="Evidencia de tu auto" onBack={onBack} />
       <span className="step-eyebrow">{step.eyebrow}</span>
       <h2>{step.title}</h2>
       <p>{step.body}</p>
@@ -880,7 +888,7 @@ function DoneScreen({ onPanel }: { onPanel: () => void }) {
     <section className="screen flow-screen done-screen">
       <CheckCircle2 size={72} />
       <h1>Viaje completado</h1>
-      <p>El flujo terminó correctamente y el viaje quedó listo para pago.</p>
+      <p>El viaje quedó documentado y listo para tu próximo depósito.</p>
       <button className="primary wide" onClick={onPanel}>
         VOLVER AL PANEL
       </button>
@@ -898,7 +906,7 @@ function TripDetails() {
         <span><Map /> {offerTrip.distance}</span>
         <span><Car /> 03</span>
       </div>
-      <p>El tiempo puede variar según el tráfico, el clima u otros retrasos.</p>
+      <p>El tiempo puede variar según el tráfico, el clima u otros factores del camino.</p>
     </div>
   );
 }
@@ -923,7 +931,7 @@ function Money({ setTab }: { setTab: (tab: Tab) => void }) {
         <button className="icon-button" onClick={() => setTab("panel")} aria-label="Volver">
           <ArrowLeft size={22} />
         </button>
-        <h1>Ganancias</h1>
+        <h1>Tu próximo depósito</h1>
       </header>
 
       <div className="earnings-tabs">
@@ -950,12 +958,12 @@ function Money({ setTab }: { setTab: (tab: Tab) => void }) {
             <polyline
               points="0,82 35,70 70,72 105,55 140,66 175,36 210,42 245,34 300,16"
               fill="none"
-              stroke="#1166ff"
+              stroke="#00E5FF"
               strokeWidth="4"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
-            <circle cx="210" cy="42" r="5" fill="#1166ff" />
+            <circle cx="210" cy="42" r="5" fill="#00E5FF" />
           </svg>
           <span>Vie</span>
         </div>
@@ -1005,10 +1013,7 @@ function Money({ setTab }: { setTab: (tab: Tab) => void }) {
         </button>
         <button onClick={() => setTab("viajes")}>
           <Map />
-          <span>Viajes</span>
-        </button>
-        <button className="add-button">
-          <span>+</span>
+          <span>Tus viajes</span>
         </button>
         <button className="active">
           <BadgeDollarSign />
@@ -1023,17 +1028,27 @@ function Money({ setTab }: { setTab: (tab: Tab) => void }) {
   );
 }
 
-function SettingsScreen() {
+function ProfileField({ label, value, placeholder }: { label: string; value?: string; placeholder?: string }) {
+  return (
+    <div className="pf-field">
+      <span className="pf-label">{label}</span>
+      <div className="pf-value">{value || <span className="pf-placeholder">{placeholder ?? "—"}</span>}</div>
+    </div>
+  );
+}
+
+function SettingsScreen({ onBack }: { onBack: () => void }) {
+  const [openSection, setOpenSection] = useState<string | null>(null);
+  const toggle = (s: string) => setOpenSection(openSection === s ? null : s);
+
   return (
     <section className="screen profile-screen">
       <header className="profile-header">
-        <button className="icon-button" aria-label="Volver">
+        <button className="icon-button" aria-label="Volver" onClick={onBack}>
           <ArrowLeft size={22} />
         </button>
         <h1>Mi perfil</h1>
-        <button className="icon-button" aria-label="Configuración">
-          <Settings size={22} />
-        </button>
+        <div style={{ width: 22 }} />
       </header>
 
       <section className="profile-card">
@@ -1042,61 +1057,117 @@ function SettingsScreen() {
         </div>
         <div>
           <h2>Luis Hernández</h2>
-          <p>
-            <span>★</span> 4.9
-            <span>★</span> (256 viajes)
-          </p>
-          <strong>
-            <CheckCircle2 size={13} />
-            Conductor certificado
-          </strong>
+          <p><span>★</span> 4.9 <span>·</span> 256 viajes</p>
+          <strong><CheckCircle2 size={13} /> Conductor certificado</strong>
         </div>
       </section>
 
       <section className="profile-section">
-        <h2>Mi información</h2>
+        <h2>Información personal</h2>
         <div className="profile-list">
           <article className="profile-detail">
-            <button>
-              <span className="profile-list-icon">
-                <Phone size={17} />
-              </span>
+            <button onClick={() => toggle("personal")}>
+              <span className="profile-list-icon"><Phone size={17} /></span>
               <strong>Datos personales</strong>
-              <ChevronRight size={18} />
+              <ChevronRight size={18} className={openSection === "personal" ? "rotated" : ""} />
             </button>
-            <div className="profile-fields">
-              <span>Teléfono</span>
-              <span>CURP</span>
-              <span>Nombre</span>
-              <span>Apellido</span>
-            </div>
+            {openSection === "personal" && (
+              <div className="pf-group">
+                <div className="pf-row-2">
+                  <ProfileField label="Nombre(s)" placeholder="—" />
+                  <ProfileField label="Apellido paterno" placeholder="—" />
+                </div>
+                <ProfileField label="Apellido materno" placeholder="—" />
+                <ProfileField label="Teléfono" placeholder="—" />
+                <ProfileField label="Correo electrónico" placeholder="—" />
+                <ProfileField label="CURP" placeholder="—" />
+                <ProfileField label="RFC" placeholder="—" />
+              </div>
+            )}
           </article>
 
           <article className="profile-detail">
-            <button>
-              <span className="profile-list-icon">
-                <IdCard size={17} />
-              </span>
-              <strong>Documentos</strong>
-              <ChevronRight size={18} />
+            <button onClick={() => toggle("domicilio")}>
+              <span className="profile-list-icon"><MapPin size={17} /></span>
+              <strong>Domicilio</strong>
+              <ChevronRight size={18} className={openSection === "domicilio" ? "rotated" : ""} />
             </button>
-            <div className="document-list">
-              <div>
-                <b>Licencia</b>
-                <span>Tipo, número y vencimiento</span>
-                <em>Subir frente y reverso</em>
+            {openSection === "domicilio" && (
+              <div className="pf-group">
+                <div className="pf-row-3">
+                  <ProfileField label="Calle" placeholder="—" />
+                  <ProfileField label="Número ext." placeholder="—" />
+                  <ProfileField label="Número int." placeholder="—" />
+                </div>
+                <ProfileField label="Colonia" placeholder="—" />
+                <div className="pf-row-2">
+                  <ProfileField label="Municipio / Alcaldía" placeholder="—" />
+                  <ProfileField label="Estado" placeholder="—" />
+                </div>
+                <ProfileField label="Código postal" placeholder="—" />
               </div>
-              <div>
-                <b>Identificación oficial</b>
-                <span>Tipo, número y vencimiento</span>
-                <em>Subir ambos lados</em>
+            )}
+          </article>
+        </div>
+      </section>
+
+      <section className="profile-section">
+        <h2>Tus documentos</h2>
+        <div className="profile-list">
+          <article className="profile-detail">
+            <button onClick={() => toggle("licencia")}>
+              <span className="profile-list-icon"><IdCard size={17} /></span>
+              <strong>Licencia de conducir</strong>
+              <ChevronRight size={18} className={openSection === "licencia" ? "rotated" : ""} />
+            </button>
+            {openSection === "licencia" && (
+              <div className="pf-group">
+                <div className="pf-row-2">
+                  <ProfileField label="Tipo" placeholder="—" />
+                  <ProfileField label="Número" placeholder="—" />
+                </div>
+                <ProfileField label="Vencimiento" placeholder="DD / MM / AAAA" />
+                <div className="pf-upload-row">
+                  <button className="pf-upload-btn"><Camera size={16} /> Frente</button>
+                  <button className="pf-upload-btn"><Camera size={16} /> Reverso</button>
+                </div>
               </div>
-              <div>
-                <b>Constancia de situación fiscal</b>
-                <span>RFC</span>
-                <em>Adjuntar PDF</em>
+            )}
+          </article>
+
+          <article className="profile-detail">
+            <button onClick={() => toggle("ine")}>
+              <span className="profile-list-icon"><IdCard size={17} /></span>
+              <strong>Identificación oficial</strong>
+              <ChevronRight size={18} className={openSection === "ine" ? "rotated" : ""} />
+            </button>
+            {openSection === "ine" && (
+              <div className="pf-group">
+                <ProfileField label="Tipo" placeholder="INE / Pasaporte / otro" />
+                <div className="pf-row-2">
+                  <ProfileField label="Número" placeholder="—" />
+                  <ProfileField label="Vencimiento" placeholder="DD / MM / AAAA" />
+                </div>
+                <div className="pf-upload-row">
+                  <button className="pf-upload-btn"><Camera size={16} /> Frente</button>
+                  <button className="pf-upload-btn"><Camera size={16} /> Reverso</button>
+                </div>
               </div>
-            </div>
+            )}
+          </article>
+
+          <article className="profile-detail">
+            <button onClick={() => toggle("fiscal")}>
+              <span className="profile-list-icon"><ReceiptText size={17} /></span>
+              <strong>Constancia fiscal</strong>
+              <ChevronRight size={18} className={openSection === "fiscal" ? "rotated" : ""} />
+            </button>
+            {openSection === "fiscal" && (
+              <div className="pf-group">
+                <ProfileField label="RFC" placeholder="—" />
+                <button className="pf-upload-btn full"><Camera size={16} /> Adjuntar PDF</button>
+              </div>
+            )}
           </article>
         </div>
       </section>
@@ -1105,31 +1176,25 @@ function SettingsScreen() {
         <h2>Preferencias</h2>
         <div className="profile-list">
           <article className="profile-detail">
-            <button>
-              <span className="profile-list-icon">
-                <Settings size={17} />
-              </span>
+            <button onClick={() => toggle("transmision")}>
+              <span className="profile-list-icon"><Settings size={17} /></span>
               <strong>Transmisión</strong>
               <small>Manual / Automática</small>
             </button>
           </article>
-
           <article className="profile-detail">
-            <button>
-              <span className="profile-list-icon">
-                <Car size={17} />
-              </span>
+            <button onClick={() => toggle("vehiculo")}>
+              <span className="profile-list-icon"><Car size={17} /></span>
               <strong>Tipo de vehículo</strong>
               <ChevronRight size={18} />
             </button>
-            <div className="preference-tags">
-              <span>Sedán</span>
-              <span>SUV</span>
-              <span>Panel de carga</span>
-              <span>Vehículos de pasajeros</span>
-              <span>Motocicletas</span>
-              <span>Vehículos de carga +3.5tn</span>
-            </div>
+            {openSection === "vehiculo" && (
+              <div className="preference-tags">
+                {["Sedán", "SUV", "Panel de carga", "Pasajeros", "Motocicleta", "Carga +3.5tn"].map(t => (
+                  <span key={t}>{t}</span>
+                ))}
+              </div>
+            )}
           </article>
         </div>
       </section>
@@ -1139,9 +1204,7 @@ function SettingsScreen() {
         <div className="profile-list compact">
           {["Legales", "Administrativos", "Apoyo"].map((item) => (
             <button key={item}>
-              <span className="profile-list-icon">
-                <HelpCircle size={17} />
-              </span>
+              <span className="profile-list-icon"><HelpCircle size={17} /></span>
               <strong>{item}</strong>
               <ChevronRight size={18} />
             </button>
@@ -1157,46 +1220,157 @@ function SettingsScreen() {
   );
 }
 
-type EvidencePhaseTab = "inicial" | "durante" | "entrega";
+function ContactScreen({ onBack }: { onBack: () => void }) {
+  return (
+    <section className="screen flow-screen">
+      <FlowHeader title="Datos de contacto" onBack={onBack} />
+      <div className="contact-body">
+        <div className="contact-trip-ref">
+          <span>Viaje</span>
+          <strong>RR-2024-0587</strong>
+        </div>
+
+        <div className="contact-card">
+          <div className="contact-avatar">CR</div>
+          <div>
+            <p className="contact-role">Solicitante del viaje</p>
+            <h2>Carlos Ramírez</h2>
+          </div>
+        </div>
+
+        <div className="contact-fields">
+          <div className="contact-field">
+            <Phone size={18} />
+            <div>
+              <span>Teléfono</span>
+              <strong>+52 55 1234 5678</strong>
+            </div>
+            <a href="tel:+525512345678" className="contact-action-btn">Llamar</a>
+          </div>
+          <div className="contact-field">
+            <Mail size={18} />
+            <div>
+              <span>Correo</span>
+              <strong>c.ramirez@empresa.com</strong>
+            </div>
+            <a href="mailto:c.ramirez@empresa.com" className="contact-action-btn">Email</a>
+          </div>
+          <div className="contact-field">
+            <ReceiptText size={18} />
+            <div>
+              <span>Notas del viaje</span>
+              <strong>Entregar en recepción principal. Preguntar por José.</strong>
+            </div>
+          </div>
+        </div>
+
+        <a
+          href="https://wa.me/525512345678"
+          target="_blank"
+          rel="noreferrer"
+          className="primary wide contact-whatsapp"
+        >
+          <Phone size={18} />
+          Contactar por WhatsApp
+        </a>
+      </div>
+    </section>
+  );
+}
+
+const SUPPORT_MESSAGES = [
+  { from: "agent", text: "¡Hola! Soy parte del equipo de soporte Ruum Ruum. ¿En qué te puedo ayudar hoy?" }
+];
+
+function SupportChat({ onBack }: { onBack: () => void }) {
+  const [messages, setMessages] = useState(SUPPORT_MESSAGES);
+  const [input, setInput] = useState("");
+  const [waiting, setWaiting] = useState(false);
+  const bottomRef = React.useRef<HTMLDivElement>(null);
+
+  const autoReplies = [
+    "Entendido, déjame revisar tu caso.",
+    "Un momento, estoy consultando con el equipo.",
+    "Gracias por la información. ¿Algo más en lo que te pueda ayudar?",
+    "Te ayudo con eso ahora mismo.",
+    "Registré tu reporte. El equipo de operaciones te contactará pronto."
+  ];
+
+  const send = () => {
+    const text = input.trim();
+    if (!text || waiting) return;
+    setMessages(prev => [...prev, { from: "user", text }]);
+    setInput("");
+    setWaiting(true);
+    setTimeout(() => {
+      const reply = autoReplies[Math.floor(Math.random() * autoReplies.length)];
+      setMessages(prev => [...prev, { from: "agent", text: reply }]);
+      setWaiting(false);
+    }, 1200);
+  };
+
+  React.useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, waiting]);
+
+  return (
+    <section className="screen support-screen">
+      <header className="support-header">
+        <button className="icon-btn" onClick={onBack}><ArrowLeft size={22} /></button>
+        <div className="support-agent-info">
+          <div className="support-avatar">RR</div>
+          <div>
+            <strong>Soporte Ruum Ruum</strong>
+            <span className="support-online">● En línea</span>
+          </div>
+        </div>
+        <div style={{ width: 34 }} />
+      </header>
+
+      <div className="support-messages">
+        {messages.map((m, i) => (
+          <div key={i} className={`support-bubble ${m.from}`}>
+            {m.text}
+          </div>
+        ))}
+        {waiting && (
+          <div className="support-bubble agent support-typing">
+            <span /><span /><span />
+          </div>
+        )}
+        <div ref={bottomRef} />
+      </div>
+
+      <div className="support-input-row">
+        <input
+          className="support-input"
+          placeholder="Escribe tu mensaje..."
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && send()}
+        />
+        <button className="support-send-btn" onClick={send} disabled={!input.trim() || waiting}>
+          <Navigation size={18} />
+        </button>
+      </div>
+    </section>
+  );
+}
 
 const evidenceSections = {
   inicial: [
-    {
-      label: "Exterior del vehículo",
-      photos: ["Frente", "Lado conductor", "Trasera", "Lado copiloto"]
-    },
-    {
-      label: "Interior del vehículo",
-      photos: ["Tablero", "Asientos"]
-    },
-    {
-      label: "Kilometraje",
-      photos: ["Odómetro"]
-    }
+    { label: "Exterior del vehículo", photos: ["Frente", "Lado conductor", "Trasera", "Lado copiloto"] },
+    { label: "Interior del vehículo", photos: ["Tablero", "Asientos"] },
+    { label: "Kilometraje", photos: ["Odómetro"] }
   ],
   durante: [
-    {
-      label: "Estado general",
-      photos: ["Frente", "Trasera"]
-    },
-    {
-      label: "Kilometraje actual",
-      photos: ["Odómetro"]
-    }
+    { label: "Estado general", photos: ["Frente", "Trasera"] },
+    { label: "Kilometraje actual", photos: ["Odómetro"] }
   ],
   entrega: [
-    {
-      label: "Exterior del vehículo",
-      photos: ["Frente", "Lado conductor", "Trasera", "Lado copiloto"]
-    },
-    {
-      label: "Interior del vehículo",
-      photos: ["Tablero", "Asientos"]
-    },
-    {
-      label: "Kilometraje final",
-      photos: ["Odómetro"]
-    }
+    { label: "Exterior del vehículo", photos: ["Frente", "Lado conductor", "Trasera", "Lado copiloto"] },
+    { label: "Interior del vehículo", photos: ["Tablero", "Asientos"] },
+    { label: "Kilometraje final", photos: ["Odómetro"] }
   ]
 };
 
@@ -1223,7 +1397,7 @@ function EvidenceCapture({
 
   return (
     <section className="screen evidence-capture-screen">
-      <FlowHeader title="Evidencia del viaje" onBack={onBack} />
+      <FlowHeader title="Evidencia de tu auto" onBack={onBack} />
 
       <div className="ev-tabs">
         {(["inicial", "durante", "entrega"] as EvidencePhaseTab[]).map(t => (
@@ -1344,7 +1518,6 @@ function IncidentReport({
 
   return (
     <section className="screen incident-screen">
-      {/* Header */}
       <div className="incident-header">
         <button className="icon-btn" onClick={onBack}>
           <ArrowLeft size={22} />
@@ -1356,7 +1529,6 @@ function IncidentReport({
       </div>
 
       <div className="incident-body">
-        {/* Tipo de incidencia */}
         <div className="incident-section">
           <h3>Selecciona el tipo de incidencia</h3>
           <div className="incident-reasons">
@@ -1373,7 +1545,6 @@ function IncidentReport({
           </div>
         </div>
 
-        {/* Descripción */}
         <div className="incident-section">
           <h3>Descripción <span className="optional">(opcional)</span></h3>
           <textarea
@@ -1385,7 +1556,6 @@ function IncidentReport({
           />
         </div>
 
-        {/* Fotos */}
         <div className="incident-section">
           <h3>Agrega fotos <span className="optional">(opcional)</span></h3>
           <button
@@ -1414,7 +1584,6 @@ function IncidentReport({
         </div>
       </div>
 
-      {/* Footer */}
       <div className="incident-footer">
         <button
           className={`primary wide ${!canSend ? "disabled-btn" : ""}`}
@@ -1452,9 +1621,9 @@ function MiniMetric({ icon, label, value }: { icon: React.ReactNode; label: stri
 function BottomNav({ active, setActive }: { active: Tab; setActive: (tab: Tab) => void }) {
   const tabs = [
     { id: "panel" as const, label: "Inicio", icon: <LayoutDashboard /> },
-    { id: "viajes" as const, label: "Viajes", icon: <Map /> },
+    { id: "viajes" as const, label: "Tus viajes", icon: <Map /> },
     { id: "dinero" as const, label: "Ganancias", icon: <BadgeDollarSign /> },
-    { id: "config" as const, label: "Perfil", icon: <IdCard /> }
+    { id: "soporte" as const, label: "Soporte", icon: <HelpCircle /> },
   ];
 
   return (
@@ -1472,3 +1641,9 @@ function BottomNav({ active, setActive }: { active: Tab; setActive: (tab: Tab) =
     </nav>
   );
 }
+
+
+
+
+
+
