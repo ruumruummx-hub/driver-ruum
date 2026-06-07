@@ -42,9 +42,15 @@ type FlowStep =
   | "originMap"
   | "locate"
   | "evidence"
+  | "incident"
+  | "evidenceCapture"
   | "destinationMap"
+  | "destinationLocate"
+  | "destinationEvidenceCapture"
   | "destinationArrival"
   | "done";
+
+type EvidencePhase = "inicial" | "durante" | "entrega";
 
 const week = [
   ["Vi", "13"],
@@ -158,6 +164,7 @@ export default function Home() {
   const [flow, setFlow] = useState<FlowStep | null>(null);
   const [acceptedOffer, setAcceptedOffer] = useState(false);
   const [evidenceIndex, setEvidenceIndex] = useState(0);
+  const [evidencePhase, setEvidencePhase] = useState<EvidencePhase>("inicial");
 
   if (!isAuthed) {
     return <Onboarding onEnter={() => setIsAuthed(true)} />;
@@ -194,7 +201,36 @@ export default function Home() {
       return <RouteMap kind="origin" onBack={() => setFlow("readyToGo")} onArrive={() => setFlow("locate")} />;
     }
     if (flow === "locate") {
-      return <LocateVehicle onBack={() => setFlow("originMap")} onFound={() => setFlow("evidence")} />;
+      return (
+        <LocateVehicle
+          onBack={() => setFlow("originMap")}
+          onFound={() => { setEvidencePhase("inicial"); setFlow("evidenceCapture"); }}
+          onNotFound={() => setFlow("incident")}
+        />
+      );
+    }
+    if (flow === "incident") {
+      return (
+        <IncidentReport
+          onBack={() => setFlow("locate")}
+          onSent={() => setFlow("locate")}
+        />
+      );
+    }
+    if (flow === "evidenceCapture") {
+      return (
+        <EvidenceCapture
+          phase={evidencePhase}
+          onBack={() => evidencePhase === "inicial" ? setFlow("locate") : setFlow("destinationLocate")}
+          onDone={() => {
+            if (evidencePhase === "inicial") {
+              setFlow("destinationMap");
+            } else {
+              setFlow("done");
+            }
+          }}
+        />
+      );
     }
     if (flow === "evidence") {
       return (
@@ -216,8 +252,18 @@ export default function Home() {
       return (
         <RouteMap
           kind="destination"
-          onBack={() => setFlow("evidence")}
-          onArrive={() => setFlow("destinationArrival")}
+          onBack={() => setFlow("evidenceCapture")}
+          onArrive={() => setFlow("destinationLocate")}
+        />
+      );
+    }
+    if (flow === "destinationLocate") {
+      return (
+        <LocateVehicle
+          onBack={() => setFlow("destinationMap")}
+          onFound={() => { setEvidencePhase("entrega"); setFlow("evidenceCapture"); }}
+          onNotFound={() => setFlow("incident")}
+          isDelivery
         />
       );
     }
@@ -748,11 +794,11 @@ function RouteMap({
   );
 }
 
-function LocateVehicle({ onBack, onFound }: { onBack: () => void; onFound: () => void }) {
+function LocateVehicle({ onBack, onFound, onNotFound, isDelivery }: { onBack: () => void; onFound: () => void; onNotFound: () => void; isDelivery?: boolean }) {
   return (
     <section className="screen flow-screen locate-screen">
-      <FlowHeader title="Localizar Vehículo" onBack={onBack} />
-      <p className="soft">Estas buscando un</p>
+      <FlowHeader title={isDelivery ? "Confirmar entrega" : "Localizar Vehículo"} onBack={onBack} />
+      <p className="soft">{isDelivery ? "Estás entregando un" : "Estas buscando un"}</p>
       <h2>{offerTrip.vehicle}</h2>
       <h3>Número de VIN</h3>
       <p className="vin">{offerTrip.vin}</p>
@@ -765,17 +811,15 @@ function LocateVehicle({ onBack, onFound }: { onBack: () => void; onFound: () =>
       </div>
       <p className="soft">
         Necesitarás el número VIN en el próximo paso. Por favor, asegúrate de que coincida con el vehículo que
-        vas a recoger.
+        {isDelivery ? " vas a entregar." : " vas a recoger."}
       </p>
       <div className="instructions">
-        <strong>Ver instrucciones de recogida</strong>
+        <strong>{isDelivery ? "Ver instrucciones de entrega" : "Ver instrucciones de recogida"}</strong>
         <ChevronUp />
       </div>
       <div className="action-row fixed-actions">
-        <button className="secondary">NO LO ENCUENTRO</button>
-        <button className="primary" onClick={onFound}>
-          LO ENCONTRÉ
-        </button>
+        <button className="secondary" onClick={onNotFound}>NO LO ENCUENTRO</button>
+        <button className="primary" onClick={onFound}>LO ENCONTRÉ</button>
       </div>
     </section>
   );
@@ -1107,6 +1151,249 @@ function SettingsScreen() {
         <XCircle size={18} />
         Eliminar cuenta
       </button>
+    </section>
+  );
+}
+
+type EvidencePhaseTab = "inicial" | "durante" | "entrega";
+
+const evidenceSections = {
+  inicial: [
+    {
+      label: "Exterior del vehículo",
+      photos: ["Frente", "Lado conductor", "Trasera", "Lado copiloto"]
+    },
+    {
+      label: "Interior del vehículo",
+      photos: ["Tablero", "Asientos"]
+    },
+    {
+      label: "Kilometraje",
+      photos: ["Odómetro"]
+    }
+  ],
+  durante: [
+    {
+      label: "Estado general",
+      photos: ["Frente", "Trasera"]
+    },
+    {
+      label: "Kilometraje actual",
+      photos: ["Odómetro"]
+    }
+  ],
+  entrega: [
+    {
+      label: "Exterior del vehículo",
+      photos: ["Frente", "Lado conductor", "Trasera", "Lado copiloto"]
+    },
+    {
+      label: "Interior del vehículo",
+      photos: ["Tablero", "Asientos"]
+    },
+    {
+      label: "Kilometraje final",
+      photos: ["Odómetro"]
+    }
+  ]
+};
+
+function EvidenceCapture({
+  phase,
+  onBack,
+  onDone
+}: {
+  phase: EvidencePhaseTab;
+  onBack: () => void;
+  onDone: () => void;
+}) {
+  const [activeTab, setActiveTab] = useState<EvidencePhaseTab>(phase);
+  const [capturedPhotos, setCapturedPhotos] = useState<Record<string, boolean>>({});
+  const sections = evidenceSections[activeTab];
+
+  const togglePhoto = (key: string) => {
+    setCapturedPhotos(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const totalPhotos = sections.reduce((acc, s) => acc + s.photos.length, 0);
+  const capturedCount = Object.values(capturedPhotos).filter(Boolean).length;
+  const allDone = capturedCount >= totalPhotos;
+
+  return (
+    <section className="screen evidence-capture-screen">
+      <FlowHeader title="Evidencia del viaje" onBack={onBack} />
+
+      <div className="ev-tabs">
+        {(["inicial", "durante", "entrega"] as EvidencePhaseTab[]).map(t => (
+          <button
+            key={t}
+            className={activeTab === t ? "selected" : ""}
+            onClick={() => { setActiveTab(t); setCapturedPhotos({}); }}
+          >
+            {t.charAt(0).toUpperCase() + t.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      <div className="ev-body">
+        {sections.map((section) => (
+          <div key={section.label} className="ev-section">
+            <h3>{section.label}</h3>
+            <div className="ev-photo-grid">
+              {section.photos.map((photo) => {
+                const key = `${activeTab}-${section.label}-${photo}`;
+                const taken = capturedPhotos[key];
+                return (
+                  <button
+                    key={photo}
+                    className={`ev-photo-slot ${taken ? "taken" : ""}`}
+                    onClick={() => togglePhoto(key)}
+                  >
+                    {taken ? (
+                      <>
+                        <CheckCircle2 size={22} className="ev-check" />
+                        <span className="ev-photo-label">{photo}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Camera size={22} />
+                        <span className="ev-photo-label">{photo}</span>
+                      </>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+
+        <div className="ev-km-row">
+          <span>Kilometraje</span>
+          <div className="ev-km-value">
+            <span>45,230 km</span>
+            <button className="ev-edit-btn" aria-label="Editar kilometraje">✏️</button>
+          </div>
+        </div>
+
+        <button className="primary wide ev-camera-btn">
+          <Camera size={20} />
+          Tomar fotos
+        </button>
+
+        <button className="ev-guidelines-link">Ver lineamientos de evidencia</button>
+      </div>
+
+      <div className="ev-footer">
+        <button
+          className={`primary wide ${!allDone ? "disabled-btn" : ""}`}
+          onClick={allDone ? onDone : undefined}
+        >
+          {activeTab === "entrega" ? "FINALIZAR VIAJE" : "CONTINUAR"}
+          {!allDone && <span className="ev-counter"> ({capturedCount}/{totalPhotos})</span>}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+const incidentReasons = [
+  "Vehículo no está en el lugar indicado",
+  "El VIN no coincide",
+  "Acceso bloqueado al área",
+  "Vehículo con daños visibles",
+  "Otro motivo"
+];
+
+function IncidentReport({
+  onBack,
+  onSent
+}: {
+  onBack: () => void;
+  onSent: () => void;
+}) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const [note, setNote] = useState("");
+  const [photoCaptured, setPhotoCaptured] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const canSend = selected !== null;
+
+  const handleSend = () => {
+    if (!canSend) return;
+    setSent(true);
+    setTimeout(onSent, 2000);
+  };
+
+  if (sent) {
+    return (
+      <section className="screen flow-screen done-screen">
+        <div className="incident-sent-icon">
+          <CheckCircle2 size={64} />
+        </div>
+        <h1>Reporte enviado</h1>
+        <p>Torre de control fue notificada. En breve recibirás instrucciones.</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="screen incident-screen">
+      <FlowHeader title="Reportar incidencia" onBack={onBack} />
+
+      <div className="incident-body">
+        <div className="incident-alert">
+          <XCircle size={20} />
+          <p>El vehículo no fue localizado. Completa el reporte para notificar a torre de control.</p>
+        </div>
+
+        <h3>Motivo de la incidencia</h3>
+        <div className="incident-reasons">
+          {incidentReasons.map((reason) => (
+            <button
+              key={reason}
+              className={`incident-reason ${selected === reason ? "selected" : ""}`}
+              onClick={() => setSelected(reason)}
+            >
+              {selected === reason ? <CheckCircle2 size={18} /> : <span className="incident-radio" />}
+              {reason}
+            </button>
+          ))}
+        </div>
+
+        <h3>Evidencia fotográfica</h3>
+        <button
+          className={`incident-photo-btn ${photoCaptured ? "captured" : ""}`}
+          onClick={() => setPhotoCaptured(true)}
+        >
+          {photoCaptured ? (
+            <><CheckCircle2 size={20} /> Foto capturada</>
+          ) : (
+            <><Camera size={20} /> Tomar foto del lugar</>
+          )}
+        </button>
+
+        <h3>Nota adicional <span className="optional">(opcional)</span></h3>
+        <textarea
+          className="incident-note"
+          placeholder="Describe la situación con más detalle..."
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          rows={3}
+        />
+      </div>
+
+      <div className="incident-footer">
+        <button
+          className={`primary wide ${!canSend ? "disabled-btn" : ""}`}
+          onClick={handleSend}
+        >
+          <Navigation size={18} />
+          ENVIAR A TORRE DE CONTROL
+        </button>
+        <button className="secondary wide" onClick={onBack}>
+          SEGUIR BUSCANDO
+        </button>
+      </div>
     </section>
   );
 }
