@@ -165,8 +165,6 @@ export default function Home() {
   const goPanel = () => { setTab("panel"); setFlow(null); };
 
   const openSummary = () => {
-    setTab("viajes");
-    setTripTab("aceptados");
     setFlow("summary");
   };
 
@@ -181,13 +179,10 @@ export default function Home() {
       return <OfferDetail onBack={() => setFlow(null)} onAccept={acceptOffer} onReject={() => setFlow(null)} />;
     }
     if (flow === "summary") {
-      return <TripSummary onBack={() => setFlow(null)} onGo={() => setFlow("readyToGo")} />;
-    }
-    if (flow === "readyToGo") {
-      return <ReadyToGo onBack={() => setFlow("summary")} onStart={() => setFlow("originMap")} />;
+      return <TripSummary onBack={() => setFlow(null)} onGo={() => setFlow("originMap")} />;
     }
     if (flow === "originMap") {
-      return <RouteMap kind="origin" onBack={() => setFlow("readyToGo")} onArrive={() => setFlow("locate")} />;
+      return <RouteMap kind="origin" onBack={() => setFlow("summary")} onArrive={() => setFlow("locate")} />;
     }
     if (flow === "locate") {
       return (
@@ -254,7 +249,7 @@ export default function Home() {
           setTab={setTab}
           onSettings={() => setTab("config")}
           onOffer={() => setFlow("offerDetail")}
-          onAccepted={openSummary}
+          onAccepted={() => setFlow("summary")}
         />
       );
     }
@@ -400,9 +395,9 @@ function Trips({ active, setActive, acceptedOffer, setTab, onSettings, onOffer, 
         <button className="icon-button" onClick={() => setTab("panel")} aria-label="Volver"><ArrowLeft size={22} /></button>
         <h1>Tus viajes</h1>
       </header>
-      <div className="segmented">
-        <button className={active === "ofertas" ? "selected" : ""} onClick={() => setActive("ofertas")}>Ofertas</button>
-        <button className={active === "aceptados" ? "selected" : ""} onClick={() => setActive("aceptados")}>Aceptados</button>
+      <div className="segmented segmented-full" style={{ display: "flex", width: "100%" }}>
+        <button style={{ flex: 1 }} className={active === "ofertas" ? "selected" : ""} onClick={() => setActive("ofertas")}>Ofertas</button>
+        <button style={{ flex: 1 }} className={active === "aceptados" ? "selected" : ""} onClick={() => setActive("aceptados")}>Aceptados</button>
       </div>
       {active === "ofertas" ? (
         <div className="trip-day">
