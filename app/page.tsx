@@ -526,7 +526,7 @@ function Panel({
             <span className="quick-icon cyan">
               <Phone size={22} />
             </span>
-            <strong>Contacto</strong>
+            <strong>Contacta al solicitante</strong>
           </button>
           <button onClick={onTrip}>
             <span className="quick-icon cyan">
