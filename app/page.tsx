@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import {
   ArrowLeft,
   BadgeDollarSign,
@@ -22,7 +22,9 @@ import {
   Mail,
   Map,
   MapPin,
+  Menu,
   Navigation,
+  Phone,
   ReceiptText,
   Settings,
   Timer,
@@ -227,7 +229,7 @@ export default function Home() {
     }
 
     if (tab === "panel") {
-      return <Panel onSettings={() => setTab("config")} hasTrip={acceptedOffer} onTrip={openSummary} />;
+      return <Panel onMoney={() => setTab("dinero")} onSettings={() => setTab("config")} hasTrip={acceptedOffer} onTrip={openSummary} />;
     }
     if (tab === "viajes") {
       return (
@@ -235,6 +237,7 @@ export default function Home() {
           active={tripTab}
           setActive={setTripTab}
           acceptedOffer={acceptedOffer}
+          setTab={setTab}
           onSettings={() => setTab("config")}
           onOffer={() => setFlow("offerDetail")}
           onAccepted={openSummary}
@@ -242,7 +245,7 @@ export default function Home() {
       );
     }
     if (tab === "dinero") {
-      return <Money onSettings={() => setTab("config")} />;
+      return <Money setTab={setTab} />;
     }
     return <SettingsScreen />;
   })();
@@ -250,14 +253,10 @@ export default function Home() {
   return (
     <main className="shell">
       <div className="phone">
-        <StatusBar />
         {content}
-        {flow !== "offerDetail" && flow !== "done" && <BottomNav active={tab} setActive={setTab} />}
-        <div className="system-nav">
-          <span />
-          <span />
-          <span />
-        </div>
+        {tab !== "panel" && tab !== "dinero" && flow !== "offerDetail" && flow !== "done" && (
+          <BottomNav active={tab} setActive={setTab} />
+        )}
       </div>
     </main>
   );
@@ -296,9 +295,15 @@ function Onboarding({ onEnter }: { onEnter: () => void }) {
     <main className="shell auth-shell">
       <section className="auth-window" aria-label="Inicio de sesión">
         <div className="auth-brand">
-          <span>Driver</span>
-          <h1>Bienvenido</h1>
-          <p>{message}</p>
+          <div className="ruum-logo" aria-label="Ruum Ruum by Moviliax">
+            <strong>ruum</strong>
+            <strong>ruum</strong>
+            <small>BY MOVILIAX</small>
+          </div>
+          <span>CONDUCTOR</span>
+          <h1>Tu app para mover vehículos con confianza.</h1>
+          <p>Recibe solicitudes, registra evidencia y completa traslados de forma segura y profesional.</p>
+          <em>{message}</em>
         </div>
 
         <form
@@ -311,7 +316,6 @@ function Onboarding({ onEnter }: { onEnter: () => void }) {
           <label>
             Correo
             <span>
-              <Mail size={22} />
               <input
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
@@ -326,7 +330,6 @@ function Onboarding({ onEnter }: { onEnter: () => void }) {
           <label>
             Contraseña
             <span>
-              <Lock size={22} />
               <input
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
@@ -338,7 +341,7 @@ function Onboarding({ onEnter }: { onEnter: () => void }) {
           </label>
 
           <button className="forgot-link" type="button" onClick={recover}>
-            ¿Olvidaste la contraseña?
+            ¿Olvidaste tu contraseña?
           </button>
 
           <button className="auth-primary" type="submit">
@@ -402,56 +405,100 @@ function FlowHeader({ title, onBack }: { title: string; onBack: () => void }) {
 }
 
 function Panel({
-  onSettings,
-  hasTrip,
+  onMoney,
   onTrip
 }: {
+  onMoney: () => void;
   onSettings: () => void;
   hasTrip: boolean;
   onTrip: () => void;
 }) {
   return (
-    <section className="screen">
-      <Header title="Panel" onSettings={onSettings} />
-      <div className="availability">
-        <strong>¿Disponible para viajes?</strong>
-        <div className="switch" aria-label="Disponible para viajes">
-          <span>NO</span>
-          <span className="active">SÍ</span>
-        </div>
-      </div>
-
-      {hasTrip ? (
-        <button className="active-trip-card" onClick={onTrip}>
-          <span>VIAJE EN CURSO</span>
-          <strong>Viaje #{offerTrip.id}</strong>
-          <small>
-            {offerTrip.origin} → {offerTrip.destination}
-          </small>
-          <ChevronRight />
+    <section className="screen panel-screen">
+      <header className="panel-top">
+        <button className="panel-icon-button" aria-label="Abrir menú">
+          <Menu size={22} />
         </button>
-      ) : (
-        <div className="priority">Prioridad activada</div>
-      )}
+        <button className="panel-bell" aria-label="Notificaciones">
+          <span>3</span>
+        </button>
+      </header>
 
-      <div className="section-head">
-        <h2>Esta Semana</h2>
-        <div className="view-switch two">
-          <span className="selected">
-            <Calendar size={28} />
-          </span>
-          <span>
-            <Columns3 size={34} />
-          </span>
+      <div className="panel-greeting">
+        <h1>Hola, Luis</h1>
+        <p>
+          <CheckCircle2 size={15} />
+          Conductor certificado
+        </p>
+      </div>
+
+      <button className="panel-trip-card" onClick={onTrip}>
+        <div className="panel-trip-head">
+          <div>
+            <h2>Viaje asignado</h2>
+            <strong>RR-2024-0587</strong>
+          </div>
+          <span>En camino</span>
+        </div>
+
+        <div className="panel-trip-details">
+          <div>
+            <small>Origen</small>
+            <b>Ciudad de México, CDMX</b>
+          </div>
+          <div className="panel-trip-price">
+            <small>Tarifa</small>
+            <b>$3,850.00</b>
+          </div>
+          <div>
+            <small>Destino</small>
+            <b>Guadalajara, Jalisco</b>
+          </div>
+        </div>
+
+        <span className="panel-trip-cta">
+          Ver detalle del viaje
+          <ChevronRight size={22} />
+        </span>
+      </button>
+
+      <div className="quick-actions">
+        <h2>Acciones rápidas</h2>
+        <div className="quick-grid">
+          <button>
+            <span className="quick-icon blue">
+              <Phone size={22} />
+            </span>
+            <strong>Datos de contacto</strong>
+          </button>
+          <button onClick={onTrip}>
+            <span className="quick-icon blue">
+              <Map size={22} />
+            </span>
+            <strong>Mis viajes</strong>
+          </button>
+          <button onClick={onMoney}>
+            <span className="quick-icon green">
+              <BadgeDollarSign size={22} />
+            </span>
+            <strong>Ganancias</strong>
+          </button>
+          <button>
+            <span className="quick-icon orange">
+              <HelpCircle size={22} />
+            </span>
+            <strong>Soporte</strong>
+          </button>
         </div>
       </div>
 
-      <div className="stats-grid">
-        <Metric icon={<BadgeDollarSign />} label="GANADO" value={hasTrip ? "$623.28" : "$0.00"} />
-        <Metric icon={<Map />} label="VIAJES" value={hasTrip ? "1" : "0"} />
-        <Metric icon={<Car />} label="VEHÍCULOS MOVIDOS" value="0" />
-        <Metric icon={<Calendar />} label="SIGUIENTE PAGO" value="Vie, 12 de Jun, 2026" />
-        <Metric icon={<Wallet />} label="DEPÓSITO EST." value={hasTrip ? "$623.28" : "$0.00"} />
+      <div className="panel-availability">
+        <span>
+          <CheckCircle2 size={14} />
+          Disponibilidad
+        </span>
+        <strong>Disponible</strong>
+        <i aria-hidden="true" />
       </div>
     </section>
   );
@@ -461,6 +508,7 @@ function Trips({
   active,
   setActive,
   acceptedOffer,
+  setTab,
   onSettings,
   onOffer,
   onAccepted
@@ -468,37 +516,31 @@ function Trips({
   active: TripTab;
   setActive: (tab: TripTab) => void;
   acceptedOffer: boolean;
+  setTab: (tab: Tab) => void;
   onSettings: () => void;
   onOffer: () => void;
   onAccepted: () => void;
 }) {
   return (
     <section className="screen trips-screen">
-      <Header title="Viajes" onSettings={onSettings} />
+      <header className="trips-header">
+        <button className="icon-button" onClick={() => setTab("panel")} aria-label="Volver">
+          <ArrowLeft size={22} />
+        </button>
+        <h1>Mis viajes</h1>
+      </header>
       <div className="segmented">
         <button className={active === "ofertas" ? "selected" : ""} onClick={() => setActive("ofertas")}>
-          OFERTAS
+          Activos
         </button>
         <button className={active === "aceptados" ? "selected" : ""} onClick={() => setActive("aceptados")}>
-          ACEPTADOS
+          Completados
         </button>
-      </div>
-      <p className="date-range">Semana 13 a 19 Marzo</p>
-      <div className="week-row compact-week">
-        {week.map(([day, num]) => (
-          <div className="date-cell" key={num}>
-            <span>{day}</span>
-            <strong className={num === "14" ? "today" : ""}>{num}</strong>
-          </div>
-        ))}
+        <button>Cancelados</button>
       </div>
 
       {active === "ofertas" ? (
         <div className="trip-day">
-          <div className="day-label">
-            <strong>HOY</strong>
-            <span>14 de mar. 2026</span>
-          </div>
           <button className="offer-card" onClick={onOffer}>
             <div className="offer-head">
               <strong>Viaje #{offerTrip.id}</strong>
@@ -511,11 +553,6 @@ function Trips({
         </div>
       ) : (
         <div className="trip-day">
-          <div className="day-label accepted">
-            <strong>MAÑANA</strong>
-            <span>14 de abr. 2026</span>
-            <b>{acceptedOffer ? "3 Viajes" : "2 Viajes"}</b>
-          </div>
           {acceptedOffer && (
             <AcceptedTripCard
               trip={{ ...offerTrip, start: "09:00", end: "17:00", distance: "189.9Km" }}
@@ -833,63 +870,243 @@ function MapPreview() {
   );
 }
 
-function Money({ onSettings }: { onSettings: () => void }) {
+function Money({ setTab }: { setTab: (tab: Tab) => void }) {
   return (
-    <section className="screen">
-      <Header title="Mi dinero" onSettings={onSettings} />
-      <div className="money-tabs">
-        <span>PENDIENTES</span>
-        <span className="divider" />
-        <strong>PAGOS</strong>
+    <section className="screen earnings-screen">
+      <header className="earnings-header">
+        <button className="icon-button" onClick={() => setTab("panel")} aria-label="Volver">
+          <ArrowLeft size={22} />
+        </button>
+        <h1>Ganancias</h1>
+      </header>
+
+      <div className="earnings-tabs">
+        <button className="selected">Resumen</button>
+        <button>Detalle</button>
+        <button>Pagos</button>
       </div>
-      <div className="section-head compact">
-        <h2>Esta Semana</h2>
-        <div className="view-switch three">
-          <span className="selected">
-            <Calendar size={28} />
-          </span>
-          <span>
-            <Columns3 size={34} />
-          </span>
-          <span>
-            <Calendar size={30} />
-          </span>
+
+      <button className="earnings-period">
+        Esta semana
+        <ChevronUp size={16} />
+      </button>
+
+      <article className="earnings-card">
+        <span>Total ganado</span>
+        <strong>$8,750.00</strong>
+        <p>
+          <CheckCircle2 size={13} />
+          18% vs semana pasada
+        </p>
+
+        <div className="earnings-chart" aria-label="Gráfica de ganancias semanales">
+          <svg viewBox="0 0 300 112" role="img" aria-hidden="true">
+            <polyline
+              points="0,82 35,70 70,72 105,55 140,66 175,36 210,42 245,34 300,16"
+              fill="none"
+              stroke="#1166ff"
+              strokeWidth="4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <circle cx="210" cy="42" r="5" fill="#1166ff" />
+          </svg>
+          <span>Vie</span>
         </div>
-      </div>
-      <div className="earned">
-        <BadgeDollarSign size={54} />
-        <div>
-          <span>GANADO</span>
-          <strong>$1,432.00</strong>
+
+        <div className="earnings-days">
+          <span>Lun</span>
+          <span>Mar</span>
+          <span>Mié</span>
+          <span>Jue</span>
+          <span>Vie</span>
+          <span>Sáb</span>
+          <span>Dom</span>
         </div>
-      </div>
-      <article className="payment-card">
-        <h3>
-          <Calendar size={32} />
-          5 de jun
-        </h3>
-        <div className="payment-row">
-          <MiniMetric icon={<BadgeDollarSign />} label="GANANCIAS" value="$1,432.00" />
-          <MiniMetric icon={<ReceiptText />} label="GASTOS" value="$0.00" />
-          <MiniMetric icon={<Wallet />} label="DEPÓSITO" value="$2,126.88" />
+
+        <div className="earnings-summary">
+          <div>
+            <span>Viajes completados</span>
+            <strong>6</strong>
+          </div>
+          <div>
+            <span>Horas en línea</span>
+            <strong>28h 15m</strong>
+          </div>
         </div>
       </article>
+
+      <section className="earnings-breakdown">
+        <h2>Desglose</h2>
+        <div>
+          <span>Ingresos por viajes</span>
+          <strong>$8,400.00</strong>
+        </div>
+        <div>
+          <span>Bonos</span>
+          <strong>$350.00</strong>
+        </div>
+        <div>
+          <span>Total</span>
+          <strong>$8,750.00</strong>
+        </div>
+      </section>
+
+      <nav className="earnings-nav" aria-label="Navegación de ganancias">
+        <button onClick={() => setTab("panel")}>
+          <LayoutDashboard />
+          <span>Inicio</span>
+        </button>
+        <button onClick={() => setTab("viajes")}>
+          <Map />
+          <span>Viajes</span>
+        </button>
+        <button className="add-button">
+          <span>+</span>
+        </button>
+        <button className="active">
+          <BadgeDollarSign />
+          <span>Ganancias</span>
+        </button>
+        <button onClick={() => setTab("config")}>
+          <IdCard />
+          <span>Perfil</span>
+        </button>
+      </nav>
     </section>
   );
 }
 
 function SettingsScreen() {
   return (
-    <section className="screen settings-screen">
-      <div className="recommend">Recomienda a un amigo</div>
-      {menu.map((group) => (
-        <div className="menu-group" key={group.title}>
-          <h2>{group.title}</h2>
-          {group.items.map((item) => (
-            <button key={item}>{item}</button>
+    <section className="screen profile-screen">
+      <header className="profile-header">
+        <button className="icon-button" aria-label="Volver">
+          <ArrowLeft size={22} />
+        </button>
+        <h1>Mi perfil</h1>
+        <button className="icon-button" aria-label="Configuración">
+          <Settings size={22} />
+        </button>
+      </header>
+
+      <section className="profile-card">
+        <div className="profile-photo" aria-label="Fotografía del conductor">
+          <span />
+        </div>
+        <div>
+          <h2>Luis Hernández</h2>
+          <p>
+            <span>★</span> 4.9
+            <span>★</span> (256 viajes)
+          </p>
+          <strong>
+            <CheckCircle2 size={13} />
+            Conductor certificado
+          </strong>
+        </div>
+      </section>
+
+      <section className="profile-section">
+        <h2>Mi información</h2>
+        <div className="profile-list">
+          <article className="profile-detail">
+            <button>
+              <span className="profile-list-icon">
+                <Phone size={17} />
+              </span>
+              <strong>Datos personales</strong>
+              <ChevronRight size={18} />
+            </button>
+            <div className="profile-fields">
+              <span>Teléfono</span>
+              <span>CURP</span>
+              <span>Nombre</span>
+              <span>Apellido</span>
+            </div>
+          </article>
+
+          <article className="profile-detail">
+            <button>
+              <span className="profile-list-icon">
+                <IdCard size={17} />
+              </span>
+              <strong>Documentos</strong>
+              <ChevronRight size={18} />
+            </button>
+            <div className="document-list">
+              <div>
+                <b>Licencia</b>
+                <span>Tipo, número y vencimiento</span>
+                <em>Subir frente y reverso</em>
+              </div>
+              <div>
+                <b>Identificación oficial</b>
+                <span>Tipo, número y vencimiento</span>
+                <em>Subir ambos lados</em>
+              </div>
+              <div>
+                <b>Constancia de situación fiscal</b>
+                <span>RFC</span>
+                <em>Adjuntar PDF</em>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section className="profile-section">
+        <h2>Preferencias</h2>
+        <div className="profile-list">
+          <article className="profile-detail">
+            <button>
+              <span className="profile-list-icon">
+                <Settings size={17} />
+              </span>
+              <strong>Transmisión</strong>
+              <small>Manual / Automática</small>
+            </button>
+          </article>
+
+          <article className="profile-detail">
+            <button>
+              <span className="profile-list-icon">
+                <Car size={17} />
+              </span>
+              <strong>Tipo de vehículo</strong>
+              <ChevronRight size={18} />
+            </button>
+            <div className="preference-tags">
+              <span>Sedán</span>
+              <span>SUV</span>
+              <span>Panel de carga</span>
+              <span>Vehículos de pasajeros</span>
+              <span>Motocicletas</span>
+              <span>Vehículos de carga +3.5tn</span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section className="profile-section">
+        <h2>FAQs y documentación</h2>
+        <div className="profile-list compact">
+          {["Legales", "Administrativos", "Apoyo"].map((item) => (
+            <button key={item}>
+              <span className="profile-list-icon">
+                <HelpCircle size={17} />
+              </span>
+              <strong>{item}</strong>
+              <ChevronRight size={18} />
+            </button>
           ))}
         </div>
-      ))}
+      </section>
+
+      <button className="delete-account">
+        <XCircle size={18} />
+        Eliminar cuenta
+      </button>
     </section>
   );
 }
@@ -918,22 +1135,29 @@ function MiniMetric({ icon, label, value }: { icon: React.ReactNode; label: stri
 
 function BottomNav({ active, setActive }: { active: Tab; setActive: (tab: Tab) => void }) {
   const tabs = [
-    { id: "panel" as const, label: "Panel", icon: <LayoutDashboard /> },
+    { id: "panel" as const, label: "Inicio", icon: <LayoutDashboard /> },
     { id: "viajes" as const, label: "Viajes", icon: <Map /> },
-    { id: "dinero" as const, label: "Mi dinero", icon: <IdCard /> }
+    { id: "dinero" as const, label: "Ganancias", icon: <BadgeDollarSign /> },
+    { id: "config" as const, label: "Perfil", icon: <IdCard /> }
   ];
 
   return (
     <nav className="bottom-nav" aria-label="Navegación principal">
-      {tabs.map((item) => (
-        <button
-          className={active === item.id ? "active" : ""}
-          key={item.id}
-          onClick={() => setActive(item.id)}
-        >
-          {item.icon}
-          <span>{item.label}</span>
-        </button>
+      {tabs.map((item, index) => (
+        <Fragment key={item.id}>
+          {index === 2 && (
+            <button className="nav-add" aria-label="Agregar">
+              <span>+</span>
+            </button>
+          )}
+          <button
+            className={active === item.id ? "active" : ""}
+            onClick={() => setActive(item.id)}
+          >
+            {item.icon}
+            <span>{item.label}</span>
+          </button>
+        </Fragment>
       ))}
     </nav>
   );
