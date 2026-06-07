@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { SessionProvider } from "@/lib/SessionProvider";
 
 export const metadata: Metadata = {
   title: "App para conductores",
@@ -20,7 +21,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body>
+        <SessionProvider />
+        {children}
+      </body>
     </html>
   );
 }

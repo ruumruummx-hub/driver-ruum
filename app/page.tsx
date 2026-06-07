@@ -210,7 +210,7 @@ export default function Home() {
     if (tab === "dinero") return <Money driver={driver} setTab={setTab} />;
     if (tab === "soporte") return <SupportChat onBack={() => setTab("panel")} />;
     if ((tab as string) === "contacto") return <ContactScreen trip={currentTrip} onBack={() => setTab("panel")} />;
-    return <SettingsScreen driver={driver} onBack={() => setTab("panel")} onLogout={async () => { const s = createClient(); await s.auth.signOut(); logout(); }} />;
+    return <SettingsScreen driver={driver} onBack={() => setTab("panel")} onLogout={async () => { const s = createClient(); await s.auth.signOut(); logout(); window.location.assign("/login"); }} />;
   })();
 
   return (

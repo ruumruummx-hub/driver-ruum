@@ -36,7 +36,6 @@ export default function LoginPage() {
       return
     }
 
-    // Buscar perfil en tabla drivers por auth_id
     const { data: driverRow, error: driverError } = await supabase
       .from('drivers')
       .select('id, name, email, phone, photo_url, certified, rating, trips_completed, status')
@@ -94,11 +93,12 @@ export default function LoginPage() {
 
     const authUser = authData.user ?? authData.session?.user
     if (!authUser) {
-      setMessage('Revisa tu correo para confirmar tu cuenta y luego completa el registro de conductor.')
+      setMessage('Se creó la cuenta. Revisa tu correo para confirmar y luego inicia sesión.')
       setLoading(false)
       return
     }
 
+    // Crear el perfil de conductor
     const { error: insertError } = await supabase
       .from('drivers')
       .insert({
@@ -113,15 +113,14 @@ export default function LoginPage() {
 
     if (insertError) {
       await supabase.auth.signOut()
-      setMessage(`No pudimos guardar tu perfil de conductor: ${insertError.message}`)
+      setMessage(`Error al crear el perfil: ${insertError.message}`)
       setLoading(false)
       return
     }
 
-    setMessage('Cuenta creada. Un administrador validará tu perfil antes de asignarte viajes.')
+    setMessage('✓ Cuenta creada. Un administrador validará tu perfil. Puedes iniciar sesión ahora.')
     setLoading(false)
   }
-
   return (
     <main className="shell auth-shell">
       <section className="auth-window" aria-label="Inicio de sesión">
@@ -136,6 +135,7 @@ export default function LoginPage() {
           <p>Conductores certificados. Viajes documentados. Control total.</p>
           <em>{message}</em>
         </div>
+
         <form className="auth-form" onSubmit={handleLogin}>
           <label>
             Correo
@@ -179,15 +179,18 @@ export default function LoginPage() {
           <button className="auth-primary" type="submit" disabled={loading}>
             <LogIn size={22} />{loading ? 'Entrando…' : 'Entrar'}
           </button>
-          <button
-            className="auth-secondary"
-            type="button"
-            onClick={handleSignup}
-            disabled={loading}
-          >
-            <UserPlus size={22} />Crear cuenta
-          </button>
         </form>
+
+        {/* Fuera del form para que no dispare submit */}
+        <button
+          className="auth-secondary"
+          type="button"
+          onClick={handleSignup}
+          disabled={loading}
+        >
+          <UserPlus size={22} />{loading ? 'Creando cuenta…' : 'Crear cuenta'}
+        </button>
+
       </section>
     </main>
   )

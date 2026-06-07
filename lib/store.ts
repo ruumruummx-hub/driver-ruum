@@ -1,6 +1,7 @@
 // lib/store.ts — Conductor
 'use client'
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 
 // ── Tipos locales ──────────────────────────────────────────────────────────────
 export interface DriverProfile {
@@ -45,11 +46,19 @@ interface AuthState {
   logout: () => void
 }
 
-export const useAuthStore = create<AuthState>()((set) => ({
-  driver: null,
-  setDriver: (driver) => set({ driver }),
-  logout: () => set({ driver: null }),
-}))
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      driver: null,
+      setDriver: (driver) => set({ driver }),
+      logout: () => set({ driver: null }),
+    }),
+    {
+      name: 'auth-store',
+      partialize: (state) => ({ driver: state.driver }),
+    }
+  )
+)
 
 // ── Trip store ─────────────────────────────────────────────────────────────────
 interface TripState {
