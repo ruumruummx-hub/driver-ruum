@@ -182,56 +182,19 @@ export default function Home() {
       return <TripSummary onBack={() => setFlow(null)} onGo={() => setFlow("originMap")} />;
     }
     if (flow === "originMap") {
-      return <RouteMap kind="origin" onBack={() => setFlow("summary")} onArrive={() => setFlow("locate")} />;
-    }
-    if (flow === "locate") {
-      return (
-        <LocateVehicle
-          onBack={() => setFlow("originMap")}
-          onFound={() => { setEvidencePhase("inicial"); setFlow("evidenceCapture"); }}
-          onNotFound={() => setFlow("incident")}
-        />
-      );
-    }
-    if (flow === "incident") {
-      return <IncidentReport onBack={() => setFlow("locate")} onSent={() => setFlow("locate")} />;
+      return <RouteMap kind="origin" onBack={() => setFlow("summary")} onArrive={() => { setEvidencePhase("inicial"); setFlow("evidenceCapture"); }} />;
     }
     if (flow === "evidenceCapture") {
       return (
         <EvidenceCapture
           phase={evidencePhase}
-          onBack={() => evidencePhase === "inicial" ? setFlow("locate") : setFlow("destinationLocate")}
+          onBack={() => evidencePhase === "inicial" ? setFlow("originMap") : setFlow("destinationMap")}
           onDone={() => evidencePhase === "inicial" ? setFlow("destinationMap") : setFlow("done")}
         />
       );
     }
-    if (flow === "evidence") {
-      return (
-        <EvidenceFlow
-          index={evidenceIndex}
-          onBack={() => evidenceIndex === 0 ? setFlow("locate") : setEvidenceIndex(evidenceIndex - 1)}
-          onNext={() => {
-            if (evidenceIndex === evidenceSteps.length - 1) { setEvidenceIndex(0); setFlow("destinationMap"); }
-            else { setEvidenceIndex(evidenceIndex + 1); }
-          }}
-        />
-      );
-    }
     if (flow === "destinationMap") {
-      return <RouteMap kind="destination" onBack={() => setFlow("evidenceCapture")} onArrive={() => setFlow("destinationLocate")} />;
-    }
-    if (flow === "destinationLocate") {
-      return (
-        <LocateVehicle
-          onBack={() => setFlow("destinationMap")}
-          onFound={() => { setEvidencePhase("entrega"); setFlow("evidenceCapture"); }}
-          onNotFound={() => setFlow("incident")}
-          isDelivery
-        />
-      );
-    }
-    if (flow === "destinationArrival") {
-      return <DestinationArrival onBack={() => setFlow("destinationMap")} onDone={() => setFlow("done")} />;
+      return <RouteMap kind="destination" onBack={() => setFlow("evidenceCapture")} onArrive={() => { setEvidencePhase("entrega"); setFlow("evidenceCapture"); }} />;
     }
     if (flow === "done") {
       return <DoneScreen onPanel={goPanel} />;
