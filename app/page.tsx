@@ -453,6 +453,7 @@ function FlowHeader({ title, onBack }: { title: string; onBack: () => void }) {
 
 function Panel({
   onMoney,
+  onSettings,
   onTrip
 }: {
   onMoney: () => void;
@@ -466,8 +467,8 @@ function Panel({
         <button className="panel-icon-button" aria-label="Abrir menú">
           <Menu size={22} />
         </button>
-        <button className="panel-bell" aria-label="Notificaciones">
-          <span>3</span>
+        <button className="panel-settings-btn" aria-label="Configuración" onClick={onSettings}>
+          <Settings size={22} />
         </button>
       </header>
 
@@ -1458,21 +1459,15 @@ function BottomNav({ active, setActive }: { active: Tab; setActive: (tab: Tab) =
 
   return (
     <nav className="bottom-nav" aria-label="Navegación principal">
-      {tabs.map((item, index) => (
-        <Fragment key={item.id}>
-          {index === 2 && (
-            <button className="nav-add" aria-label="Agregar">
-              <span>+</span>
-            </button>
-          )}
-          <button
-            className={active === item.id ? "active" : ""}
-            onClick={() => setActive(item.id)}
-          >
-            {item.icon}
-            <span>{item.label}</span>
-          </button>
-        </Fragment>
+      {tabs.map((item) => (
+        <button
+          key={item.id}
+          className={active === item.id ? "active" : ""}
+          onClick={() => setActive(item.id)}
+        >
+          {item.icon}
+          <span>{item.label}</span>
+        </button>
       ))}
     </nav>
   );
