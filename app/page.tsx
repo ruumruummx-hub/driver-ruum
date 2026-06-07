@@ -227,11 +227,11 @@ export default function Home() {
         />
       );
     }
-    if (flow === "expenses") {
-      return <ExpensesScreen onDone={goPanel} />;
-    }
     if (flow === "done") {
       return <DoneScreen onPanel={() => setFlow("expenses")} />;
+    }
+    if (flow === "expenses") {
+      return <ExpensesScreen onDone={goPanel} />;
     }
 
     if (tab === "panel") {
@@ -760,7 +760,7 @@ function RouteMap({ kind, onBack, onArrive }: { kind: "origin" | "destination"; 
   const isOrigin = kind === "origin";
   return (
     <section className="screen map-screen">
-      <FlowHeader title={isOrigin ? "Punto de origen" : "Destino final"} onBack={onBack} />
+      <FlowHeader title={isOrigin ? "Punto de origen" : "Conduce a"} onBack={onBack} />
       <h2>{isOrigin ? offerTrip.origin : offerTrip.destination}</h2>
       <p>{isOrigin ? offerTrip.originAddress : offerTrip.destinationAddress}</p>
       <MapPreview />
@@ -847,10 +847,12 @@ function DestinationArrival({ onBack, onDone }: { onBack: () => void; onDone: ()
 function DoneScreen({ onPanel }: { onPanel: () => void }) {
   return (
     <section className="screen flow-screen done-screen">
+      <style dangerouslySetInnerHTML={{ __html: `.done-thanks { font-size:0.9rem; color:rgba(255,255,255,0.55); line-height:1.6; font-style:italic; max-width:260px; text-align:center; margin-bottom:4px; }` }} />
       <CheckCircle2 size={72} />
-      <h1>Viaje completado</h1>
-      <p>El viaje quedó documentado y listo para tu próximo depósito.</p>
-      <button className="primary wide" onClick={onPanel}>VOLVER AL PANEL</button>
+      <h1>¡Viaje completado!</h1>
+      <p className="done-thanks">Gracias por tu trabajo, Luis. Cada viaje bien documentado nos ayuda a seguir creciendo juntos.</p>
+      <p>El viaje quedó registrado y está listo para tu próximo depósito.</p>
+      <button className="primary wide" onClick={onPanel}>VER MIS GASTOS</button>
     </section>
   );
 }
