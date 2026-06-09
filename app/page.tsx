@@ -1,6 +1,7 @@
 "use client";
 
 import React, { Fragment, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft, BadgeDollarSign, Calendar, Camera, Car, CheckCircle2,
   ChevronRight, ChevronUp, ChevronDown, Clock, Columns3, Fuel,
@@ -49,7 +50,8 @@ const evidenceSections = {
 };
 
 export default function Home() {
-  const { driver, logout } = useAuthStore();
+  const { driver, logout, _hasHydrated } = useAuthStore();
+  const router = useRouter();
   const {
     loading, activeTrip, offeredTrips,
     acceptTrip, advanceTripStatus, submitEvidence, submitExpense, reportIncident
@@ -64,6 +66,17 @@ export default function Home() {
   const [actionError, setActionError] = useState<string | null>(null);
 
   // ── Auth guard ───────────────────────────────────────────
+  // Esperar a que Zustand rehidrate desde localStorage antes de decidir
+  if (!_hasHydrated) {
+    return (
+      <main className="shell">
+        <div className="phone" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <p style={{ color: "rgba(255,255,255,0.3)", fontSize: "0.9rem" }}>Iniciando…</p>
+        </div>
+      </main>
+    );
+  }
+
   if (!driver) {
     return <AuthRedirect />;
   }
@@ -210,7 +223,7 @@ export default function Home() {
     if (tab === "dinero") return <Money driver={driver} setTab={setTab} />;
     if (tab === "soporte") return <SupportChat onBack={() => setTab("panel")} />;
     if ((tab as string) === "contacto") return <ContactScreen trip={currentTrip} onBack={() => setTab("panel")} />;
-    return <SettingsScreen driver={driver} onBack={() => setTab("panel")} onLogout={async () => { const s = createClient(); await s.auth.signOut(); logout(); window.location.assign("/login"); }} />;
+    return <SettingsScreen driver={driver} onBack={() => setTab("panel")} onLogout={async () => { const s = createClient(); await s.auth.signOut(); logout(); router.push("/login"); }} />;
   })();
 
   return (
@@ -227,7 +240,8 @@ export default function Home() {
 
 /* ── Auth redirect ──────────────────────────────────────── */
 function AuthRedirect() {
-  React.useEffect(() => { window.location.assign("/login"); }, []);
+  const router = useRouter();
+  React.useEffect(() => { router.push("/login"); }, [router]);
   return (
     <main className="shell">
       <div className="phone" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1213,4 +1227,3 @@ function BottomNav({ active, setActive }: { active: Tab; setActive: (tab: Tab) =
     </nav>
   );
 }
-

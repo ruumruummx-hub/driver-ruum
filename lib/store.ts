@@ -42,20 +42,27 @@ export interface ActiveTrip {
 // ── Auth store ─────────────────────────────────────────────────────────────────
 interface AuthState {
   driver: DriverProfile | null
+  _hasHydrated: boolean
   setDriver: (driver: DriverProfile) => void
   logout: () => void
+  setHasHydrated: (state: boolean) => void
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       driver: null,
+      _hasHydrated: false,
       setDriver: (driver) => set({ driver }),
       logout: () => set({ driver: null }),
+      setHasHydrated: (state) => set({ _hasHydrated: state }),
     }),
     {
       name: 'auth-store',
       partialize: (state) => ({ driver: state.driver }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true)
+      },
     }
   )
 )
