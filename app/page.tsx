@@ -713,40 +713,24 @@ function MapPreview() {
 
 /* ── Money ──────────────────────────────────────────────── */
 function Money({ driver, setTab }: { driver: { name: string } | null; setTab: (tab: Tab) => void }) {
+  const firstName = driver?.name?.split(" ")[0] ?? "Conductor";
   return (
     <section className="screen earnings-screen">
+      <style dangerouslySetInnerHTML={{ __html: `
+        .earnings-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:16px;padding:40px 32px;text-align:center}
+        .earnings-empty-icon{width:64px;height:64px;border-radius:50%;background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.15);display:flex;align-items:center;justify-content:center;color:rgba(0,229,255,0.5)}
+        .earnings-empty h2{font-size:1.1rem;font-weight:700;margin:0}
+        .earnings-empty p{font-size:0.85rem;color:rgba(255,255,255,0.45);line-height:1.6;margin:0}
+      ` }} />
       <header className="earnings-header">
         <button className="icon-button" onClick={() => setTab("panel")} aria-label="Volver"><ArrowLeft size={22} /></button>
         <h1>Tu próximo depósito</h1>
       </header>
-      <div className="earnings-tabs">
-        <button className="selected">Resumen</button><button>Detalle</button><button>Pagos</button>
+      <div className="earnings-empty">
+        <div className="earnings-empty-icon"><BadgeDollarSign size={28} /></div>
+        <h2>Hola, {firstName}</h2>
+        <p>Tus ganancias aparecerán aquí una vez que completes tu primer viaje. ¡Ánimo!</p>
       </div>
-      <button className="earnings-period">Esta semana<ChevronUp size={16} /></button>
-      <article className="earnings-card">
-        <span>Total ganado</span>
-        <strong>$8,750.00</strong>
-        <p><CheckCircle2 size={13} />18% vs semana pasada</p>
-        <div className="earnings-chart">
-          <svg viewBox="0 0 300 112" role="img" aria-hidden="true">
-            <polyline points="0,82 35,70 70,72 105,55 140,66 175,36 210,42 245,34 300,16" fill="none" stroke="#00E5FF" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-            <circle cx="210" cy="42" r="5" fill="#00E5FF" />
-          </svg>
-        </div>
-        <div className="earnings-days">
-          <span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span><span>Dom</span>
-        </div>
-        <div className="earnings-summary">
-          <div><span>Viajes completados</span><strong>6</strong></div>
-          <div><span>Horas en línea</span><strong>28h 15m</strong></div>
-        </div>
-      </article>
-      <section className="earnings-breakdown">
-        <h2>Desglose</h2>
-        <div><span>Ingresos por viajes</span><strong>$8,400.00</strong></div>
-        <div><span>Bonos</span><strong>$350.00</strong></div>
-        <div><span>Total</span><strong>$8,750.00</strong></div>
-      </section>
       <nav className="earnings-nav">
         <button onClick={() => setTab("panel")}><LayoutDashboard size={18} /><span>Inicio</span></button>
         <button onClick={() => setTab("viajes")}><Map size={18} /><span>Tus viajes</span></button>
@@ -883,169 +867,41 @@ function ContactScreen({ trip, onBack }: {
 }
 
 /* ── Support Chat ───────────────────────────────────────── */
-const SUPPORT_MESSAGES = [{ from: "agent", text: "¡Hola! Soy parte del equipo de soporte Ruum Ruum. ¿En qué te puedo ayudar hoy?" }];
-
 function SupportChat({ onBack }: { onBack: () => void }) {
-  const [messages, setMessages] = useState(SUPPORT_MESSAGES);
-  const [input, setInput] = useState("");
-  const [waiting, setWaiting] = useState(false);
-  const bottomRef = React.useRef<HTMLDivElement>(null);
-  const autoReplies = ["Entendido, déjame revisar tu caso.", "Un momento, estoy consultando con el equipo.", "Gracias por la información.", "Te ayudo con eso ahora mismo.", "Registré tu reporte. El equipo te contactará pronto."];
-  const send = () => {
-    const text = input.trim();
-    if (!text || waiting) return;
-    setMessages(prev => [...prev, { from: "user", text }]);
-    setInput(""); setWaiting(true);
-    setTimeout(() => {
-      setMessages(prev => [...prev, { from: "agent", text: autoReplies[Math.floor(Math.random() * autoReplies.length)] }]);
-      setWaiting(false);
-    }, 1200);
-  };
-  React.useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, waiting]);
+  const WHATSAPP_URL = "https://wa.me/525669522178";
   return (
     <section className="screen support-screen">
       <header className="support-header">
         <button className="icon-btn" onClick={onBack}><ArrowLeft size={22} /></button>
         <div className="support-agent-info">
           <div className="support-avatar">RR</div>
-          <div><strong>Soporte Ruum Ruum</strong><span className="support-online">● En línea</span></div>
+          <div><strong>Soporte Ruum Ruum</strong><span className="support-online">● WhatsApp</span></div>
         </div>
         <div style={{ width: 34 }} />
       </header>
-      <div className="support-messages">
-        {messages.map((m, i) => <div key={i} className={`support-bubble ${m.from}`}>{m.text}</div>)}
-        {waiting && <div className="support-bubble agent support-typing"><span /><span /><span /></div>}
-        <div ref={bottomRef} />
-      </div>
-      <div className="support-input-row">
-        <input className="support-input" placeholder="Escribe tu mensaje..." value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => e.key === "Enter" && send()} />
-        <button className="support-send-btn" onClick={send} disabled={!input.trim() || waiting}><Navigation size={18} /></button>
-      </div>
-    </section>
-  );
-}
-
-/* ── Evidence Capture ───────────────────────────────────── */
-const evCSS = `
-.ev-field-group{display:flex;flex-direction:column;gap:10px}
-.ev-field{display:flex;flex-direction:column;gap:4px}
-.ev-field span{font-size:0.72rem;font-weight:600;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.07em}
-.ev-field input{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:10px 12px;color:inherit;font-size:0.88rem;outline:none}
-.ev-field input:focus{border-color:rgba(0,229,255,0.5);background:rgba(0,229,255,0.05)}
-.ev-comments{width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:10px 12px;color:inherit;font-size:0.85rem;resize:none;outline:none;font-family:inherit;box-sizing:border-box}
-.ev-comments:focus{border-color:rgba(0,229,255,0.4)}
-`;
-
-function EvidenceCapture({ phase, trip, onBack, onDone }: {
-  phase: EvidencePhaseTab;
-  trip: ReturnType<typeof useDriver>["activeTrip"];
-  onBack: () => void;
-  onDone: (notes?: string, km?: number, fuel?: number) => void;
-}) {
-  const [activeTab, setActiveTab] = useState<EvidencePhaseTab>(phase);
-  const [capturedPhotos, setCapturedPhotos] = useState<Record<string, boolean>>({});
-  const [vin, setVin] = useState(trip?.vehicleVin ?? "");
-  const [plates, setPlates] = useState(trip?.vehiclePlates ?? "");
-  const [fuel, setFuel] = useState("");
-  const [keys, setKeys] = useState("");
-  const [km, setKm] = useState("");
-  const [pickupComments, setPickupComments] = useState("");
-  const [keyLocation, setKeyLocation] = useState("");
-  const [vehicleLocation, setVehicleLocation] = useState("");
-  const [deliveryComments, setDeliveryComments] = useState("");
-
-  const sections = evidenceSections[activeTab];
-  const togglePhoto = (key: string) => setCapturedPhotos(prev => ({ ...prev, [key]: !prev[key] }));
-  const totalPhotos = sections.reduce((acc, s) => acc + s.photos.length, 0);
-  const capturedCount = Object.values(capturedPhotos).filter(Boolean).length;
-  const allDone = capturedCount >= totalPhotos;
-
-  const handleDone = () => {
-    const notes = activeTab === "inicial"
-      ? [pickupComments, keys ? `Llaves: ${keys}` : "", keyLocation ? `Llaves dejadas en: ${keyLocation}` : ""].filter(Boolean).join(" | ")
-      : [deliveryComments, vehicleLocation ? `Vehículo dejado en: ${vehicleLocation}` : "", keyLocation ? `Llaves dejadas en: ${keyLocation}` : ""].filter(Boolean).join(" | ");
-    onDone(notes || undefined, km ? parseInt(km) : undefined, fuel ? parseInt(fuel) : undefined);
-  };
-
-  return (
-    <section className="screen evidence-capture-screen">
-      <style dangerouslySetInnerHTML={{ __html: evCSS }} />
-      <FlowHeader title="Evidencia del vehículo" onBack={onBack} />
-      <div className="ev-tabs">
-        {(["inicial", "durante", "entrega"] as EvidencePhaseTab[]).map(t => (
-          <button key={t} className={activeTab === t ? "selected" : ""} onClick={() => { setActiveTab(t); setCapturedPhotos({}); }}>
-            {t === "inicial" ? "Recolección" : t === "durante" ? "Durante" : "Entrega"}
-          </button>
-        ))}
-      </div>
-      <div className="ev-body">
-        {activeTab === "inicial" && (
-          <div className="ev-section">
-            <h3>Datos del vehículo</h3>
-            <div className="ev-field-group">
-              <label className="ev-field"><span>Número VIN</span><input value={vin} onChange={e => setVin(e.target.value)} placeholder={trip?.vehicleVin ?? "VIN"} /></label>
-              <label className="ev-field"><span>Placas</span><input value={plates} onChange={e => setPlates(e.target.value)} placeholder={trip?.vehiclePlates ?? "NMX-0000"} /></label>
-              <label className="ev-field"><span>Nivel de combustible (%)</span><input value={fuel} onChange={e => setFuel(e.target.value)} placeholder="75" inputMode="numeric" /></label>
-              <label className="ev-field"><span>Llaves recibidas</span><input value={keys} onChange={e => setKeys(e.target.value)} placeholder="Ej. 2 llaves" /></label>
-            </div>
-          </div>
-        )}
-        {activeTab === "entrega" && (
-          <div className="ev-section">
-            <h3>Datos de entrega</h3>
-            <div className="ev-field-group">
-              <label className="ev-field"><span>¿Dónde dejaste la llave?</span><input value={keyLocation} onChange={e => setKeyLocation(e.target.value)} placeholder="Ej. Recepción, caja de seguridad..." /></label>
-              <label className="ev-field"><span>¿Dónde dejaste el vehículo?</span><input value={vehicleLocation} onChange={e => setVehicleLocation(e.target.value)} placeholder="Ej. Cajón 14, área de recepción..." /></label>
-            </div>
-          </div>
-        )}
-        {sections.map(section => (
-          <div key={section.label} className="ev-section">
-            <h3>{section.label}</h3>
-            <div className="ev-photo-grid">
-              {section.photos.map(photo => {
-                const key = `${activeTab}-${section.label}-${photo}`;
-                const taken = capturedPhotos[key];
-                return (
-                  <button key={photo} className={`ev-photo-slot ${taken ? "taken" : ""}`} onClick={() => togglePhoto(key)}>
-                    {taken ? <><CheckCircle2 size={22} className="ev-check" /><span className="ev-photo-label">{photo}</span></> : <><Camera size={22} /><span className="ev-photo-label">{photo}</span></>}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-        <div className="ev-km-row">
-          <span>Kilometraje</span>
-          <div className="ev-km-value">
-            <input value={km} onChange={e => setKm(e.target.value)} placeholder="45,230" inputMode="numeric" style={{ background: "none", border: "none", color: "inherit", fontSize: "0.9rem", width: "100px", textAlign: "right" }} />
-            <span style={{ fontSize: "0.8rem", opacity: 0.5 }}>km</span>
-          </div>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20, padding: "40px 32px", textAlign: "center" }}>
+        <div style={{ width: 72, height: 72, borderRadius: "50%", background: "rgba(0,229,255,0.08)", border: "1px solid rgba(0,229,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Phone size={30} style={{ color: "rgba(0,229,255,0.7)" }} />
         </div>
-        {activeTab === "inicial" && (
-          <div className="ev-section">
-            <h3>Tus comentarios sobre la recolección</h3>
-            <textarea className="ev-comments" placeholder="Observaciones opcionales..." value={pickupComments} onChange={e => setPickupComments(e.target.value)} rows={3} />
-          </div>
-        )}
-        {activeTab === "entrega" && (
-          <div className="ev-section">
-            <h3>Tus comentarios sobre la entrega</h3>
-            <textarea className="ev-comments" placeholder="Observaciones opcionales..." value={deliveryComments} onChange={e => setDeliveryComments(e.target.value)} rows={3} />
-          </div>
-        )}
-        <button className="ev-guidelines-link">Ver lineamientos de evidencia</button>
-      </div>
-      <div className="ev-footer">
-        <button className={`primary wide ${!allDone ? "disabled-btn" : ""}`} onClick={allDone ? handleDone : undefined}>
-          {activeTab === "entrega" ? "FINALIZAR VIAJE" : "CONTINUAR"}
-          {!allDone && <span className="ev-counter"> ({capturedCount}/{totalPhotos})</span>}
-        </button>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <strong style={{ fontSize: "1.05rem" }}>¿Necesitas ayuda?</strong>
+          <p style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.45)", lineHeight: 1.6, margin: 0 }}>
+            Nuestro equipo está disponible por WhatsApp para apoyarte durante tus viajes.
+          </p>
+        </div>
+        <a
+          href={WHATSAPP_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="primary wide"
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, textDecoration: "none", marginTop: 8 }}
+        >
+          <Phone size={20} />Abrir WhatsApp
+        </a>
       </div>
     </section>
   );
 }
-
 /* ── Expenses Screen ────────────────────────────────────── */
 const expenseCSS = `
 .expenses-screen{display:flex;flex-direction:column;height:100%;background:var(--bg,#0d1117);color:var(--text,#e8eaf6)}
