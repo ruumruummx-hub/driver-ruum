@@ -119,12 +119,12 @@ export default function Home() {
     if (!result.ok) setActionError(result.error ?? "Error al actualizar estado");
   };
 
-  const handleSubmitEvidence = async (phase: EvidencePhase, notes?: string, km?: number, fuel?: number) => {
+  const handleSubmitEvidence = async (phase: EvidencePhase, notes?: string, km?: number, fuel?: number, photoUrls?: string[]) => {
     if (!currentTrip) return;
     const typeMap: Record<EvidencePhase, "inicial" | "durante" | "final"> = {
       inicial: "inicial", durante: "durante", entrega: "final"
     };
-    await submitEvidence({ tripId: currentTrip.id, type: typeMap[phase], notes, kmReading: km, fuelLevel: fuel });
+    await submitEvidence({ tripId: currentTrip.id, type: typeMap[phase], notes, kmReading: km, fuelLevel: fuel, photoUrls });
   };
 
   const handleSubmitExpenses = async (expenses: { type: string; concept: string; amount: number }[]) => {
@@ -173,8 +173,8 @@ export default function Home() {
           phase={evidencePhase}
           trip={currentTrip}
           onBack={() => evidencePhase === "inicial" ? setFlow("locate") : setFlow("destinationLocate")}
-          onDone={async (notes, km, fuel) => {
-            await handleSubmitEvidence(evidencePhase, notes, km, fuel);
+          onDone={async (notes, km, fuel, photoUrls) => {
+            await handleSubmitEvidence(evidencePhase, notes, km, fuel, photoUrls);
             if (evidencePhase === "inicial") {
               handleAdvance("traslado_curso");
               setFlow("destinationMap");
@@ -902,6 +902,23 @@ function SupportChat({ onBack }: { onBack: () => void }) {
     </section>
   );
 }
+/* ── Cloudinary upload helper ───────────────────────────── */
+async function uploadToCloudinary(file: File, folder: string): Promise<string> {
+  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME!;
+  const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!;
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", uploadPreset);
+  formData.append("folder", folder);
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) throw new Error("Error al subir foto");
+  const data = await res.json();
+  return data.secure_url as string;
+}
+
 /* ── Evidence Capture ───────────────────────────────────── */
 const evCSS = `
 .ev-field-group{display:flex;flex-direction:column;gap:10px}
@@ -911,16 +928,22 @@ const evCSS = `
 .ev-field input:focus{border-color:rgba(0,229,255,0.5);background:rgba(0,229,255,0.05)}
 .ev-comments{width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:10px 12px;color:inherit;font-size:0.85rem;resize:none;outline:none;font-family:inherit;box-sizing:border-box}
 .ev-comments:focus{border-color:rgba(0,229,255,0.4)}
+.ev-photo-slot.uploading{opacity:0.5;pointer-events:none}
+.ev-photo-slot.taken img{width:100%;height:100%;object-fit:cover;border-radius:8px;position:absolute;inset:0}
+.ev-photo-slot{position:relative}
+.ev-upload-err{font-size:0.72rem;color:#f87171;padding:2px 0;text-align:center}
 `;
+
+type PhotoState = { url: string; uploading: boolean; error: boolean };
 
 function EvidenceCapture({ phase, trip, onBack, onDone }: {
   phase: EvidencePhaseTab;
   trip: ReturnType<typeof useDriver>["activeTrip"];
   onBack: () => void;
-  onDone: (notes?: string, km?: number, fuel?: number) => void;
+  onDone: (notes?: string, km?: number, fuel?: number, photoUrls?: string[]) => void;
 }) {
   const [activeTab, setActiveTab] = useState<EvidencePhaseTab>(phase);
-  const [capturedPhotos, setCapturedPhotos] = useState<Record<string, boolean>>({});
+  const [photos, setPhotos] = useState<Record<string, PhotoState>>({});
   const [vin, setVin] = useState(trip?.vehicleVin ?? "");
   const [plates, setPlates] = useState(trip?.vehiclePlates ?? "");
   const [fuel, setFuel] = useState("");
@@ -932,16 +955,45 @@ function EvidenceCapture({ phase, trip, onBack, onDone }: {
   const [deliveryComments, setDeliveryComments] = useState("");
 
   const sections = evidenceSections[activeTab];
-  const togglePhoto = (key: string) => setCapturedPhotos(prev => ({ ...prev, [key]: !prev[key] }));
   const totalPhotos = sections.reduce((acc, s) => acc + s.photos.length, 0);
-  const capturedCount = Object.values(capturedPhotos).filter(Boolean).length;
-  const allDone = capturedCount >= totalPhotos;
+  const takenKeys = Object.entries(photos).filter(([k, v]) => k.startsWith(activeTab) && v.url && !v.error);
+  const capturedCount = takenKeys.length;
+  const anyUploading = Object.values(photos).some(v => v.uploading);
+  const allDone = capturedCount >= totalPhotos && !anyUploading;
+
+  const handlePhotoClick = async (key: string, label: string) => {
+    // Si ya tiene foto subida, no hacer nada (el conductor debe continuar)
+    if (photos[key]?.url) return;
+
+    // Crear input file invisible y dispararlo
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.capture = "environment";
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+
+      setPhotos(prev => ({ ...prev, [key]: { url: "", uploading: true, error: false } }));
+      try {
+        const folder = `ruum-evidence/${trip?.id ?? "sin-viaje"}/${activeTab}`;
+        const url = await uploadToCloudinary(file, folder);
+        setPhotos(prev => ({ ...prev, [key]: { url, uploading: false, error: false } }));
+      } catch {
+        setPhotos(prev => ({ ...prev, [key]: { url: "", uploading: false, error: true } }));
+      }
+    };
+    input.click();
+  };
 
   const handleDone = () => {
     const notes = activeTab === "inicial"
       ? [pickupComments, keys ? `Llaves: ${keys}` : "", keyLocation ? `Llaves dejadas en: ${keyLocation}` : ""].filter(Boolean).join(" | ")
       : [deliveryComments, vehicleLocation ? `Vehículo dejado en: ${vehicleLocation}` : "", keyLocation ? `Llaves dejadas en: ${keyLocation}` : ""].filter(Boolean).join(" | ");
-    onDone(notes || undefined, km ? parseInt(km) : undefined, fuel ? parseInt(fuel) : undefined);
+    const photoUrls = Object.entries(photos)
+      .filter(([k, v]) => k.startsWith(activeTab) && v.url)
+      .map(([, v]) => v.url);
+    onDone(notes || undefined, km ? parseInt(km) : undefined, fuel ? parseInt(fuel) : undefined, photoUrls);
   };
 
   return (
@@ -950,7 +1002,7 @@ function EvidenceCapture({ phase, trip, onBack, onDone }: {
       <FlowHeader title="Evidencia del vehículo" onBack={onBack} />
       <div className="ev-tabs">
         {(["inicial", "durante", "entrega"] as EvidencePhaseTab[]).map(t => (
-          <button key={t} className={activeTab === t ? "selected" : ""} onClick={() => { setActiveTab(t); setCapturedPhotos({}); }}>
+          <button key={t} className={activeTab === t ? "selected" : ""} onClick={() => setActiveTab(t)}>
             {t === "inicial" ? "Recolección" : t === "durante" ? "Durante" : "Entrega"}
           </button>
         ))}
@@ -982,11 +1034,27 @@ function EvidenceCapture({ phase, trip, onBack, onDone }: {
             <div className="ev-photo-grid">
               {section.photos.map(photo => {
                 const key = `${activeTab}-${section.label}-${photo}`;
-                const taken = capturedPhotos[key];
+                const state = photos[key];
+                const taken = !!state?.url;
+                const uploading = !!state?.uploading;
+                const hasError = !!state?.error;
                 return (
-                  <button key={photo} className={`ev-photo-slot ${taken ? "taken" : ""}`} onClick={() => togglePhoto(key)}>
-                    {taken ? <><CheckCircle2 size={22} className="ev-check" /><span className="ev-photo-label">{photo}</span></> : <><Camera size={22} /><span className="ev-photo-label">{photo}</span></>}
-                  </button>
+                  <div key={photo} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <button
+                      className={`ev-photo-slot ${taken ? "taken" : ""} ${uploading ? "uploading" : ""}`}
+                      onClick={() => handlePhotoClick(key, photo)}
+                    >
+                      {uploading && <span style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.5)" }}>Subiendo…</span>}
+                      {taken && !uploading && (
+                        <>
+                          <img src={state.url} alt={photo} />
+                          <CheckCircle2 size={18} className="ev-check" style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.5)", borderRadius: "50%" }} />
+                        </>
+                      )}
+                      {!taken && !uploading && <><Camera size={22} /><span className="ev-photo-label">{photo}</span></>}
+                    </button>
+                    {hasError && <span className="ev-upload-err">Error, toca para reintentar</span>}
+                  </div>
                 );
               })}
             </div>
@@ -1014,9 +1082,9 @@ function EvidenceCapture({ phase, trip, onBack, onDone }: {
         <button className="ev-guidelines-link">Ver lineamientos de evidencia</button>
       </div>
       <div className="ev-footer">
-        <button className={`primary wide ${!allDone ? "disabled-btn" : ""}`} onClick={allDone ? handleDone : undefined}>
-          {activeTab === "entrega" ? "FINALIZAR VIAJE" : "CONTINUAR"}
-          {!allDone && <span className="ev-counter"> ({capturedCount}/{totalPhotos})</span>}
+        <button className={`primary wide ${!allDone ? "disabled-btn" : ""}`} onClick={allDone ? handleDone : undefined} disabled={anyUploading}>
+          {anyUploading ? "Subiendo fotos…" : activeTab === "entrega" ? "FINALIZAR VIAJE" : "CONTINUAR"}
+          {!anyUploading && !allDone && <span className="ev-counter"> ({capturedCount}/{totalPhotos})</span>}
         </button>
       </div>
     </section>

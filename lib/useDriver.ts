@@ -175,7 +175,7 @@ export function useDriver() {
     kmReading?: number
     fuelLevel?: number
     notes?: string
-    // photos: en Fase 4.2 se conectará a Cloudinary
+    photoUrls?: string[]
   }): Promise<{ ok: boolean; evidenceId?: string; error?: string }> => {
     const supabase = createClient()
 
@@ -187,6 +187,7 @@ export function useDriver() {
         km_reading: params.kmReading ?? null,
         fuel_level: params.fuelLevel ?? null,
         notes: params.notes ?? null,
+        photo_urls: (params.photoUrls ?? []) as never,
         status: 'en_revision',
       })
       .select('id')
