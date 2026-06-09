@@ -90,34 +90,14 @@ export default function LoginPage() {
       return
     }
 
-    const authUser = authData.user ?? authData.session?.user
-    if (!authUser) {
+    if (!authData.user && !authData.session?.user) {
       setMessage('Se creó la cuenta. Revisa tu correo para confirmar y luego inicia sesión.')
       setLoading(false)
       return
     }
 
-    // Crear el perfil de conductor
-    const { error: insertError } = await supabase
-      .from('drivers')
-      .insert({
-        auth_id: authUser.id,
-        name: email.split('@')[0],
-        email: email.trim(),
-        status: 'pendiente_validacion',
-        certified: false,
-        trips_completed: 0,
-        earnings: 0,
-      })
-
-    if (insertError) {
-      await supabase.auth.signOut()
-      setMessage(`Error al crear el perfil: ${insertError.message}`)
-      setLoading(false)
-      return
-    }
-
-    setMessage('✓ Cuenta creada. Un administrador validará tu perfil. Puedes iniciar sesión ahora.')
+    await supabase.auth.signOut()
+    setMessage('Cuenta creada. Un administrador debe vincularte como conductor antes de iniciar sesión.')
     setLoading(false)
   }
   return (
@@ -169,7 +149,9 @@ export default function LoginPage() {
             onClick={async () => {
               if (!hasEmail) { setMessage('Escribe tu correo para enviarte la recuperación.'); return }
               const supabase = createClient()
-              await supabase.auth.resetPasswordForEmail(email.trim())
+              await supabase.auth.resetPasswordForEmail(email.trim(), {
+                redirectTo: `${window.location.origin}/login`,
+              })
               setMessage(`Enviamos instrucciones a ${email.trim()}.`)
             }}
           >

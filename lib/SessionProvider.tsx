@@ -1,83 +1,167 @@
-// lib/SessionProvider.tsx
-'use client'
-import { useEffect, useState } from 'react'
-import { createClient } from './supabase'
-import { useAuthStore } from './store'
+// SessionProvider.tsx — App: Conductor
+// Remediación: reemplazar getSession() → getUser()
+// getSession() lee solo del storage local y puede ser manipulado.
+// getUser() siempre verifica contra el servidor de Supabase Auth.
 
-export function SessionProvider() {
-  const { driver, setDriver, logout } = useAuthStore()
-  const [initialized, setInitialized] = useState(false)
+'use client'
+
+import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { createBrowserClient } from '@supabase/ssr'
+import type { User, Session } from '@supabase/supabase-js'
+import type { Database } from '@/lib/database.types'
+
+interface DriverProfile {
+  id: string
+  user_id: string
+  nombre: string
+  apellido: string
+  status: 'activo' | 'inactivo' | 'suspendido' | 'en_viaje'
+  is_active: boolean
+  calificacion_promedio: number | null
+}
+
+interface SessionContextType {
+  user: User | null
+  session: Session | null
+  driver: DriverProfile | null
+  isLoading: boolean
+  isAuthenticated: boolean
+  refreshUser: () => Promise<void>
+  signOut: () => Promise<void>
+}
+
+const SessionContext = createContext<SessionContextType | undefined>(undefined)
+
+export function SessionProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [session, setSession] = useState<Session | null>(null)
+  const [driver, setDriver] = useState<DriverProfile | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  const supabase = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
+  // ✅ CORRECCIÓN CRÍTICA: getUser() en lugar de getSession()
+  // getUser() hace una petición al servidor para validar el JWT.
+  // Detecta tokens revocados, expirados o manipulados que getSession() ignoraría.
+  const loadUser = useCallback(async () => {
+    try {
+      setIsLoading(true)
+
+      const {
+        data: { user: verifiedUser },
+        error: userError,
+      } = await supabase.auth.getUser()
+
+      if (userError || !verifiedUser) {
+        setUser(null)
+        setSession(null)
+        setDriver(null)
+        return
+      }
+
+      // Solo después de verificar el user, obtenemos la sesión para el token
+      const {
+        data: { session: currentSession },
+      } = await supabase.auth.getSession()
+
+      setUser(verifiedUser)
+      setSession(currentSession)
+
+      // Cargar perfil del conductor vinculado al user verificado
+      const { data: driverData, error: driverError } = await supabase
+        .from('drivers')
+        .select('id, user_id, nombre, apellido, status, is_active, calificacion_promedio')
+        .eq('user_id', verifiedUser.id)
+        .single()
+
+      if (!driverError && driverData) {
+        setDriver(driverData)
+      }
+    } catch (err) {
+      console.error('[SessionProvider] Error al cargar usuario:', err)
+      setUser(null)
+      setSession(null)
+      setDriver(null)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [supabase])
+
+  const refreshUser = useCallback(async () => {
+    await loadUser()
+  }, [loadUser])
+
+  const signOut = useCallback(async () => {
+    await supabase.auth.signOut()
+    setUser(null)
+    setSession(null)
+    setDriver(null)
+  }, [supabase])
 
   useEffect(() => {
-    const initializeSession = async () => {
-      try {
-        const supabase = createClient()
-        
-        // Obtener la sesión actual de Supabase
-        const { data: sessionData } = await supabase.auth.getSession()
-        
-        // Si no hay sesión de auth, limpiar el store
-        if (!sessionData.session) {
-          logout()
-          setInitialized(true)
-          return
-        }
+    // Carga inicial con getUser() verificado
+    loadUser()
 
-        // Si ya hay un driver en el store, solo validar que la sesión sea correcta
-        if (driver) {
-          // Validar que el auth_id coincida
-          if (driver.authId === sessionData.session.user.id) {
-            setInitialized(true)
-            return
-          } else {
-            // La sesión cambió, limpiar
-            logout()
-            setInitialized(true)
-            return
-          }
-        }
-
-        // Si no hay driver en el store pero hay sesión, restaurar desde BD
-        const { data: driverRow, error: driverError } = await supabase
-          .from('drivers')
-          .select('id, name, email, phone, photo_url, certified, rating, trips_completed, status')
-          .eq('auth_id', sessionData.session.user.id)
-          .maybeSingle()
-
-        if (driverError || !driverRow) {
-          // La sesión existe pero no hay perfil de conductor asociado
-          await supabase.auth.signOut()
-          logout()
-          setInitialized(true)
-          return
-        }
-
-        // Restaurar el conductor en el store
-        setDriver({
-          id: driverRow.id,
-          authId: sessionData.session.user.id,
-          name: driverRow.name,
-          email: driverRow.email,
-          phone: driverRow.phone,
-          photoUrl: driverRow.photo_url,
-          certified: driverRow.certified,
-          rating: driverRow.rating,
-          tripsCompleted: driverRow.trips_completed,
-          status: driverRow.status,
-        })
-
-        setInitialized(true)
-      } catch (error) {
-        console.error('Error initializing session:', error)
-        logout()
-        setInitialized(true)
+    // Escuchar cambios de estado de autenticación
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      if (event === 'SIGNED_OUT' || !newSession) {
+        setUser(null)
+        setSession(null)
+        setDriver(null)
+        setIsLoading(false)
+        return
       }
+
+      if (
+        event === 'SIGNED_IN' ||
+        event === 'TOKEN_REFRESHED' ||
+        event === 'USER_UPDATED'
+      ) {
+        // ✅ Verificar también en el evento — no confiar solo en el newSession
+        await loadUser()
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
     }
+  }, [loadUser, supabase])
 
-    initializeSession()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  return (
+    <SessionContext.Provider
+      value={{
+        user,
+        session,
+        driver,
+        isLoading,
+        isAuthenticated: !!user,
+        refreshUser,
+        signOut,
+      }}
+    >
+      {children}
+    </SessionContext.Provider>
+  )
+}
 
-  // No renderizar nada - solo inicializa la sesión
-  return null
+export function useSession() {
+  const context = useContext(SessionContext)
+  if (context === undefined) {
+    throw new Error('useSession debe usarse dentro de <SessionProvider>')
+  }
+  return context
+}
+
+// Hook de conveniencia para componentes que requieren autenticación
+export function useRequiredSession() {
+  const session = useSession()
+  if (!session.isAuthenticated && !session.isLoading) {
+    throw new Error('Este componente requiere una sesión activa')
+  }
+  return session
 }

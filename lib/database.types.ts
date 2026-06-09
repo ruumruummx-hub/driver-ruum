@@ -252,6 +252,9 @@ export type Database = {
         Row: {
           auth_id: string | null
           bank_account: string | null
+          bank_account_holder: string | null
+          bank_clabe: string | null
+          bank_name: string | null
           certified: boolean
           created_at: string
           earnings: number
@@ -270,6 +273,9 @@ export type Database = {
         Insert: {
           auth_id?: string | null
           bank_account?: string | null
+          bank_account_holder?: string | null
+          bank_clabe?: string | null
+          bank_name?: string | null
           certified?: boolean
           created_at?: string
           earnings?: number
@@ -288,6 +294,9 @@ export type Database = {
         Update: {
           auth_id?: string | null
           bank_account?: string | null
+          bank_account_holder?: string | null
+          bank_clabe?: string | null
+          bank_name?: string | null
           certified?: boolean
           created_at?: string
           earnings?: number

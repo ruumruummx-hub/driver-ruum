@@ -2,6 +2,8 @@
 import { createBrowserClient } from '@supabase/ssr'
 import type { Database } from './database.types'
 
+let browserClient: ReturnType<typeof createBrowserClient<Database>> | null = null
+
 export function createClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -10,5 +12,6 @@ export function createClient() {
     throw new Error('Faltan las variables de entorno NEXT_PUBLIC_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_ANON_KEY')
   }
 
-  return createBrowserClient<Database>(url, key)
+  browserClient ??= createBrowserClient<Database>(url, key)
+  return browserClient
 }

@@ -914,8 +914,25 @@ function SettingsScreen({ driver, onBack, onLogout }: {
     const res = await updateProfile({ name: editName.trim(), phone: editPhone.trim() });
     if (res.ok) {
       // refrescar driver en store
-      const { data } = await supabase.from("drivers").select("*").eq("id", (driver as unknown as { id: string }).id).single();
-      if (data) setDriver({ ...data as unknown as Parameters<typeof setDriver>[0] });
+      const { data } = await supabase
+        .from("drivers")
+        .select("id, auth_id, name, email, phone, photo_url, certified, rating, trips_completed, status")
+        .eq("id", (driver as unknown as { id: string }).id)
+        .single();
+      if (data) {
+        setDriver({
+          id: data.id,
+          authId: data.auth_id ?? "",
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          photoUrl: data.photo_url,
+          certified: data.certified,
+          rating: data.rating,
+          tripsCompleted: data.trips_completed,
+          status: data.status,
+        });
+      }
       setSavedP(true); setTimeout(() => setSavedP(false), 2000);
     } else setErrorP(res.error ?? "Error al guardar");
     setSavingP(false);

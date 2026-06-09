@@ -58,6 +58,31 @@ function rowToOffer(row: Record<string, unknown>): TripOffer {
 import type { Database } from './database.types'
 
 type TripStatus = Database['public']['Enums']['trip_status']
+const TRIP_SELECT = `
+  id,
+  status,
+  origin_address,
+  destination_address,
+  vehicle_brand,
+  vehicle_model,
+  vehicle_plates,
+  vehicle_vin,
+  vehicle_year,
+  vehicle_color,
+  distance_km,
+  driver_pay_mxn,
+  scheduled_at,
+  origin_contact_name,
+  origin_contact_phone,
+  dest_contact_name,
+  dest_contact_phone,
+  special_instructions,
+  user_id,
+  created_at,
+  updated_at,
+  driver_id
+`
+
 export function useDriver() {
   const { driver } = useAuthStore()
   const { activeTrip, offeredTrips, setActiveTrip, setOfferedTrips } = useTripStore()
@@ -74,7 +99,7 @@ export function useDriver() {
     // Viajes ofertados: pendiente_asignacion sin conductor
     const { data: offered, error: offeredErr } = await supabase
       .from('trips')
-      .select('*')
+      .select(TRIP_SELECT)
       .eq('status', 'pendiente_asignacion')
       .is('driver_id', null)
       .order('created_at', { ascending: false })
@@ -95,7 +120,7 @@ export function useDriver() {
 
     const { data: active, error: activeErr } = await supabase
       .from('trips')
-      .select('*')
+      .select(TRIP_SELECT)
       .eq('driver_id', driver.id)
       .in('status', ACTIVE)
       .order('updated_at', { ascending: false })
@@ -187,13 +212,25 @@ export function useDriver() {
         km_reading: params.kmReading ?? null,
         fuel_level: params.fuelLevel ?? null,
         notes: params.notes ?? null,
-        photo_urls: (params.photoUrls ?? []) as never,
         status: 'en_revision',
       })
       .select('id')
       .single()
 
     if (error) return { ok: false, error: error.message }
+
+    const photos = params.photoUrls ?? []
+    if (photos.length > 0) {
+      const { error: photosError } = await supabase
+        .from('evidence_photos')
+        .insert(photos.map((url) => ({
+          evidence_id: data.id,
+          url,
+        })))
+
+      if (photosError) return { ok: false, error: photosError.message }
+    }
+
     return { ok: true, evidenceId: data.id }
   }, [])
 
@@ -346,24 +383,45 @@ export function useDriver() {
 
     const { data: urlData } = supabase.storage.from('documents').getPublicUrl(path)
 
-    // Upsert en tabla documents
-    const { error: dbErr } = await supabase
+    const payload = {
+      owner_id: driver.id,
+      owner_type: 'driver',
+      owner_name: driver.name,
+      type: params.docType,
+      status: 'en_revision' as const,
+      url: urlData.publicUrl,
+      storage_path: path,
+      mime_type: params.file.type,
+      file_size_bytes: params.file.size,
+      uploaded_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+
+    const { data: existing, error: existingErr } = await supabase
       .from('documents')
-      .upsert({
-        owner_id: driver.id,
-        owner_type: 'driver',
-        owner_name: driver.name,
-        type: params.docType,
-        status: 'en_revision',
-        url: urlData.publicUrl,
-        storage_path: path,
-        mime_type: params.file.type,
-        file_size_bytes: params.file.size,
-        uploaded_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'owner_id,type' })
+      .select('id, storage_path')
+      .eq('owner_id', driver.id)
+      .eq('owner_type', 'driver')
+      .eq('type', params.docType)
+      .maybeSingle()
+
+    if (existingErr) return { ok: false, error: existingErr.message }
+
+    const { error: dbErr } = existing
+      ? await supabase
+        .from('documents')
+        .update(payload)
+        .eq('id', existing.id)
+      : await supabase
+      .from('documents')
+        .insert(payload)
 
     if (dbErr) return { ok: false, error: dbErr.message }
+
+    if (existing?.storage_path && existing.storage_path !== path) {
+      await supabase.storage.from('documents').remove([existing.storage_path])
+    }
+
     return { ok: true }
   }, [driver])
 
