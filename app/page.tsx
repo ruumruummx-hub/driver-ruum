@@ -902,6 +902,127 @@ function SupportChat({ onBack }: { onBack: () => void }) {
     </section>
   );
 }
+/* ── Evidence Capture ───────────────────────────────────── */
+const evCSS = `
+.ev-field-group{display:flex;flex-direction:column;gap:10px}
+.ev-field{display:flex;flex-direction:column;gap:4px}
+.ev-field span{font-size:0.72rem;font-weight:600;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.07em}
+.ev-field input{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:10px 12px;color:inherit;font-size:0.88rem;outline:none}
+.ev-field input:focus{border-color:rgba(0,229,255,0.5);background:rgba(0,229,255,0.05)}
+.ev-comments{width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:10px 12px;color:inherit;font-size:0.85rem;resize:none;outline:none;font-family:inherit;box-sizing:border-box}
+.ev-comments:focus{border-color:rgba(0,229,255,0.4)}
+`;
+
+function EvidenceCapture({ phase, trip, onBack, onDone }: {
+  phase: EvidencePhaseTab;
+  trip: ReturnType<typeof useDriver>["activeTrip"];
+  onBack: () => void;
+  onDone: (notes?: string, km?: number, fuel?: number) => void;
+}) {
+  const [activeTab, setActiveTab] = useState<EvidencePhaseTab>(phase);
+  const [capturedPhotos, setCapturedPhotos] = useState<Record<string, boolean>>({});
+  const [vin, setVin] = useState(trip?.vehicleVin ?? "");
+  const [plates, setPlates] = useState(trip?.vehiclePlates ?? "");
+  const [fuel, setFuel] = useState("");
+  const [keys, setKeys] = useState("");
+  const [km, setKm] = useState("");
+  const [pickupComments, setPickupComments] = useState("");
+  const [keyLocation, setKeyLocation] = useState("");
+  const [vehicleLocation, setVehicleLocation] = useState("");
+  const [deliveryComments, setDeliveryComments] = useState("");
+
+  const sections = evidenceSections[activeTab];
+  const togglePhoto = (key: string) => setCapturedPhotos(prev => ({ ...prev, [key]: !prev[key] }));
+  const totalPhotos = sections.reduce((acc, s) => acc + s.photos.length, 0);
+  const capturedCount = Object.values(capturedPhotos).filter(Boolean).length;
+  const allDone = capturedCount >= totalPhotos;
+
+  const handleDone = () => {
+    const notes = activeTab === "inicial"
+      ? [pickupComments, keys ? `Llaves: ${keys}` : "", keyLocation ? `Llaves dejadas en: ${keyLocation}` : ""].filter(Boolean).join(" | ")
+      : [deliveryComments, vehicleLocation ? `Vehículo dejado en: ${vehicleLocation}` : "", keyLocation ? `Llaves dejadas en: ${keyLocation}` : ""].filter(Boolean).join(" | ");
+    onDone(notes || undefined, km ? parseInt(km) : undefined, fuel ? parseInt(fuel) : undefined);
+  };
+
+  return (
+    <section className="screen evidence-capture-screen">
+      <style dangerouslySetInnerHTML={{ __html: evCSS }} />
+      <FlowHeader title="Evidencia del vehículo" onBack={onBack} />
+      <div className="ev-tabs">
+        {(["inicial", "durante", "entrega"] as EvidencePhaseTab[]).map(t => (
+          <button key={t} className={activeTab === t ? "selected" : ""} onClick={() => { setActiveTab(t); setCapturedPhotos({}); }}>
+            {t === "inicial" ? "Recolección" : t === "durante" ? "Durante" : "Entrega"}
+          </button>
+        ))}
+      </div>
+      <div className="ev-body">
+        {activeTab === "inicial" && (
+          <div className="ev-section">
+            <h3>Datos del vehículo</h3>
+            <div className="ev-field-group">
+              <label className="ev-field"><span>Número VIN</span><input value={vin} onChange={e => setVin(e.target.value)} placeholder={trip?.vehicleVin ?? "VIN"} /></label>
+              <label className="ev-field"><span>Placas</span><input value={plates} onChange={e => setPlates(e.target.value)} placeholder={trip?.vehiclePlates ?? "NMX-0000"} /></label>
+              <label className="ev-field"><span>Nivel de combustible (%)</span><input value={fuel} onChange={e => setFuel(e.target.value)} placeholder="75" inputMode="numeric" /></label>
+              <label className="ev-field"><span>Llaves recibidas</span><input value={keys} onChange={e => setKeys(e.target.value)} placeholder="Ej. 2 llaves" /></label>
+            </div>
+          </div>
+        )}
+        {activeTab === "entrega" && (
+          <div className="ev-section">
+            <h3>Datos de entrega</h3>
+            <div className="ev-field-group">
+              <label className="ev-field"><span>¿Dónde dejaste la llave?</span><input value={keyLocation} onChange={e => setKeyLocation(e.target.value)} placeholder="Ej. Recepción, caja de seguridad..." /></label>
+              <label className="ev-field"><span>¿Dónde dejaste el vehículo?</span><input value={vehicleLocation} onChange={e => setVehicleLocation(e.target.value)} placeholder="Ej. Cajón 14, área de recepción..." /></label>
+            </div>
+          </div>
+        )}
+        {sections.map(section => (
+          <div key={section.label} className="ev-section">
+            <h3>{section.label}</h3>
+            <div className="ev-photo-grid">
+              {section.photos.map(photo => {
+                const key = `${activeTab}-${section.label}-${photo}`;
+                const taken = capturedPhotos[key];
+                return (
+                  <button key={photo} className={`ev-photo-slot ${taken ? "taken" : ""}`} onClick={() => togglePhoto(key)}>
+                    {taken ? <><CheckCircle2 size={22} className="ev-check" /><span className="ev-photo-label">{photo}</span></> : <><Camera size={22} /><span className="ev-photo-label">{photo}</span></>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+        <div className="ev-km-row">
+          <span>Kilometraje</span>
+          <div className="ev-km-value">
+            <input value={km} onChange={e => setKm(e.target.value)} placeholder="45,230" inputMode="numeric" style={{ background: "none", border: "none", color: "inherit", fontSize: "0.9rem", width: "100px", textAlign: "right" }} />
+            <span style={{ fontSize: "0.8rem", opacity: 0.5 }}>km</span>
+          </div>
+        </div>
+        {activeTab === "inicial" && (
+          <div className="ev-section">
+            <h3>Tus comentarios sobre la recolección</h3>
+            <textarea className="ev-comments" placeholder="Observaciones opcionales..." value={pickupComments} onChange={e => setPickupComments(e.target.value)} rows={3} />
+          </div>
+        )}
+        {activeTab === "entrega" && (
+          <div className="ev-section">
+            <h3>Tus comentarios sobre la entrega</h3>
+            <textarea className="ev-comments" placeholder="Observaciones opcionales..." value={deliveryComments} onChange={e => setDeliveryComments(e.target.value)} rows={3} />
+          </div>
+        )}
+        <button className="ev-guidelines-link">Ver lineamientos de evidencia</button>
+      </div>
+      <div className="ev-footer">
+        <button className={`primary wide ${!allDone ? "disabled-btn" : ""}`} onClick={allDone ? handleDone : undefined}>
+          {activeTab === "entrega" ? "FINALIZAR VIAJE" : "CONTINUAR"}
+          {!allDone && <span className="ev-counter"> ({capturedCount}/{totalPhotos})</span>}
+        </button>
+      </div>
+    </section>
+  );
+}
+
 /* ── Expenses Screen ────────────────────────────────────── */
 const expenseCSS = `
 .expenses-screen{display:flex;flex-direction:column;height:100%;background:var(--bg,#0d1117);color:var(--text,#e8eaf6)}
