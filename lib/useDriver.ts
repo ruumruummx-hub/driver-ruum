@@ -241,6 +241,82 @@ export function useDriver() {
     return { ok: true }
   }, [])
 
+  // ── Ganancias reales ────────────────────────────────────────────────────────
+  const fetchEarnings = useCallback(async (): Promise<{
+    ok: boolean
+    data?: {
+      totalAprobado: number
+      totalPendiente: number
+      tripsCount: number
+      payments: Array<{
+        id: string
+        tripId: string
+        concept: string | null
+        amount: number
+        status: string
+        paidAt: string | null
+        createdAt: string
+      }>
+    }
+    error?: string
+  }> => {
+    if (!driver) return { ok: false, error: 'Sin sesión' }
+    const supabase = createClient()
+
+    // Traemos los payments de los viajes del conductor
+    const { data, error } = await supabase
+      .from('payments')
+      .select(`
+        id,
+        trip_id,
+        concept,
+        amount,
+        status,
+        paid_at,
+        created_at,
+        trips!inner(driver_id)
+      `)
+      .eq('trips.driver_id', driver.id)
+      .in('type', ['pago_conductor', 'anticipo', 'liquidacion'])
+      .order('created_at', { ascending: false })
+      .limit(50)
+
+    if (error) return { ok: false, error: error.message }
+
+    const rows = (data ?? []) as Array<{
+      id: string; trip_id: string; concept: string | null
+      amount: number; status: string; paid_at: string | null; created_at: string
+    }>
+
+    const totalAprobado = rows
+      .filter(r => r.status === 'aprobado' || r.status === 'pagado')
+      .reduce((s, r) => s + Number(r.amount), 0)
+
+    const totalPendiente = rows
+      .filter(r => r.status === 'pendiente')
+      .reduce((s, r) => s + Number(r.amount), 0)
+
+    const tripIds = [...new Set(rows.map(r => r.trip_id))]
+
+    return {
+      ok: true,
+      data: {
+        totalAprobado,
+        totalPendiente,
+        tripsCount: tripIds.length,
+        payments: rows.map(r => ({
+          id: r.id,
+          tripId: r.trip_id,
+          concept: r.concept,
+          amount: Number(r.amount),
+          status: r.status,
+          paidAt: r.paid_at,
+          createdAt: r.created_at,
+        })),
+      },
+    }
+  }, [driver])
+
   return {
     driver,
     loading,
@@ -252,6 +328,7 @@ export function useDriver() {
     submitEvidence,
     submitExpense,
     reportIncident,
+    fetchEarnings,
     reload: loadTrips,
   }
 }

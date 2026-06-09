@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Fragment, useState } from "react";
+import React, { Fragment, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, BadgeDollarSign, Calendar, Camera, Car, CheckCircle2,
@@ -712,25 +712,134 @@ function MapPreview() {
 }
 
 /* ── Money ──────────────────────────────────────────────── */
+type EarningsData = {
+  totalAprobado: number;
+  totalPendiente: number;
+  tripsCount: number;
+  payments: Array<{
+    id: string; tripId: string; concept: string | null;
+    amount: number; status: string; paidAt: string | null; createdAt: string;
+  }>;
+};
+
 function Money({ driver, setTab }: { driver: { name: string } | null; setTab: (tab: Tab) => void }) {
-  const firstName = driver?.name?.split(" ")[0] ?? "Conductor";
+  const { fetchEarnings } = useDriver();
+  const [earnings, setEarnings] = useState<EarningsData | null>(null);
+  const [loadingE, setLoadingE] = useState(true);
+  const [errorE, setErrorE] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingE(true);
+    fetchEarnings().then(res => {
+      if (cancelled) return;
+      if (res.ok && res.data) setEarnings(res.data);
+      else setErrorE(res.error ?? "Error al cargar ganancias");
+      setLoadingE(false);
+    });
+    return () => { cancelled = true; };
+  }, [fetchEarnings]);
+
+  const fmt = (n: number) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(n);
+
+  const statusLabel = (s: string) => {
+    if (s === "aprobado" || s === "pagado") return { label: "Pagado", color: "#00e5ff" };
+    if (s === "pendiente") return { label: "Pendiente", color: "#f5a623" };
+    return { label: s, color: "rgba(255,255,255,0.4)" };
+  };
+
+  const hasData = earnings && (earnings.tripsCount > 0 || earnings.payments.length > 0);
+
   return (
     <section className="screen earnings-screen">
       <style dangerouslySetInnerHTML={{ __html: `
-        .earnings-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:16px;padding:40px 32px;text-align:center}
-        .earnings-empty-icon{width:64px;height:64px;border-radius:50%;background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.15);display:flex;align-items:center;justify-content:center;color:rgba(0,229,255,0.5)}
-        .earnings-empty h2{font-size:1.1rem;font-weight:700;margin:0}
-        .earnings-empty p{font-size:0.85rem;color:rgba(255,255,255,0.45);line-height:1.6;margin:0}
+        .earn-header{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.07)}
+        .earn-header h1{font-size:1rem;font-weight:700;margin:0;flex:1}
+        .earn-summary{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:20px 20px 0}
+        .earn-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:16px}
+        .earn-card-label{font-size:0.72rem;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+        .earn-card-amount{font-size:1.35rem;font-weight:800;font-feature-settings:"tnum"}
+        .earn-card-amount.green{color:#00e5ff}
+        .earn-card-amount.amber{color:#f5a623}
+        .earn-card-sub{font-size:0.75rem;color:rgba(255,255,255,0.35);margin-top:4px}
+        .earn-section-title{font-size:0.72rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:.06em;padding:20px 20px 10px;font-weight:600}
+        .earn-list{padding:0 20px;display:flex;flex-direction:column;gap:10px;flex:1;overflow-y:auto;padding-bottom:80px}
+        .earn-row{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:14px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+        .earn-row-left{display:flex;flex-direction:column;gap:3px;flex:1;min-width:0}
+        .earn-row-concept{font-size:0.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .earn-row-date{font-size:0.72rem;color:rgba(255,255,255,0.35)}
+        .earn-row-right{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0}
+        .earn-row-amount{font-size:0.95rem;font-weight:800;font-feature-settings:"tnum";color:#00e5ff}
+        .earn-row-status{font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+        .earn-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:16px;padding:40px 32px;text-align:center}
+        .earn-empty-icon{width:64px;height:64px;border-radius:50%;background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.15);display:flex;align-items:center;justify-content:center;color:rgba(0,229,255,0.5)}
+        .earn-empty h2{font-size:1.05rem;font-weight:700;margin:0}
+        .earn-empty p{font-size:0.82rem;color:rgba(255,255,255,0.4);line-height:1.65;margin:0}
+        .earn-loading{display:flex;align-items:center;justify-content:center;flex:1;color:rgba(255,255,255,0.3);font-size:0.85rem}
       ` }} />
-      <header className="earnings-header">
+
+      <header className="earn-header">
         <button className="icon-button" onClick={() => setTab("panel")} aria-label="Volver"><ArrowLeft size={22} /></button>
-        <h1>Tu próximo depósito</h1>
+        <h1>Mis ganancias</h1>
       </header>
-      <div className="earnings-empty">
-        <div className="earnings-empty-icon"><BadgeDollarSign size={28} /></div>
-        <h2>Hola, {firstName}</h2>
-        <p>Tus ganancias aparecerán aquí una vez que completes tu primer viaje. ¡Ánimo!</p>
-      </div>
+
+      {loadingE && <div className="earn-loading">Cargando…</div>}
+
+      {!loadingE && errorE && (
+        <div className="earn-empty">
+          <div className="earn-empty-icon"><BadgeDollarSign size={28} /></div>
+          <h2>No pudimos cargar tus datos</h2>
+          <p>{errorE}</p>
+        </div>
+      )}
+
+      {!loadingE && !errorE && !hasData && (
+        <div className="earn-empty">
+          <div className="earn-empty-icon"><BadgeDollarSign size={28} /></div>
+          <h2>Aún sin ganancias</h2>
+          <p>Tus pagos aparecerán aquí una vez que completes tu primer viaje. ¡Ánimo, {driver?.name?.split(" ")[0]}!</p>
+        </div>
+      )}
+
+      {!loadingE && !errorE && hasData && earnings && (
+        <>
+          <div className="earn-summary">
+            <div className="earn-card">
+              <div className="earn-card-label">Total pagado</div>
+              <div className="earn-card-amount green">{fmt(earnings.totalAprobado)}</div>
+              <div className="earn-card-sub">{earnings.tripsCount} {earnings.tripsCount === 1 ? "viaje" : "viajes"}</div>
+            </div>
+            <div className="earn-card">
+              <div className="earn-card-label">Por depositar</div>
+              <div className="earn-card-amount amber">{fmt(earnings.totalPendiente)}</div>
+              <div className="earn-card-sub">en proceso</div>
+            </div>
+          </div>
+
+          <div className="earn-section-title">Historial de pagos</div>
+          <div className="earn-list">
+            {earnings.payments.map(p => {
+              const { label, color } = statusLabel(p.status);
+              const date = new Date(p.paidAt ?? p.createdAt).toLocaleDateString("es-MX", {
+                day: "numeric", month: "short", year: "numeric"
+              });
+              return (
+                <div key={p.id} className="earn-row">
+                  <div className="earn-row-left">
+                    <span className="earn-row-concept">{p.concept ?? `Viaje ${p.tripId.slice(0, 8)}`}</span>
+                    <span className="earn-row-date">{date}</span>
+                  </div>
+                  <div className="earn-row-right">
+                    <span className="earn-row-amount">{fmt(p.amount)}</span>
+                    <span className="earn-row-status" style={{ color }}>{label}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
       <nav className="earnings-nav">
         <button onClick={() => setTab("panel")}><LayoutDashboard size={18} /><span>Inicio</span></button>
         <button onClick={() => setTab("viajes")}><Map size={18} /><span>Tus viajes</span></button>
