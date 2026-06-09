@@ -860,19 +860,158 @@ function ProfileField({ label, value, placeholder }: { label: string; value?: st
   );
 }
 
+const FAQ_ITEMS: Record<string, { q: string; a: string }[]> = {
+  "Legales": [
+    { q: "¿Soy empleado de Ruum Ruum?", a: "No. Eres un prestador de servicios independiente. Ruum Ruum actúa como plataforma intermediaria." },
+    { q: "¿Qué pasa si hay un daño al vehículo?", a: "Cada viaje queda documentado con evidencia fotográfica. Cualquier reclamación se gestiona con el equipo de soporte." },
+    { q: "¿Mis datos están protegidos?", a: "Sí. Toda tu información se almacena de forma segura conforme a la Ley Federal de Protección de Datos Personales." },
+  ],
+  "Administrativos": [
+    { q: "¿Cuándo recibo mi pago?", a: "Los pagos aprobados se depositan en un plazo de 1 a 3 días hábiles una vez que el admin los autoriza." },
+    { q: "¿Cómo actualizo mis datos bancarios?", a: "Ve a la sección 'Datos bancarios' en tu perfil. Los cambios aplican al siguiente ciclo de pago." },
+    { q: "¿Qué documentos necesito mantener vigentes?", a: "Licencia de conducir, identificación oficial y constancia fiscal (RFC). Te avisamos cuando alguno esté por vencer." },
+  ],
+  "Apoyo": [
+    { q: "¿Cómo reporto un problema durante un viaje?", a: "Usa el botón 'Incidencia' dentro del flujo del viaje activo. También puedes contactar soporte por WhatsApp." },
+    { q: "¿Puedo cancelar un viaje aceptado?", a: "Sí, comunícate de inmediato con soporte por WhatsApp para coordinar la cancelación sin afectar tu historial." },
+    { q: "¿Cómo mejoro mi calificación?", a: "Llegando puntual, completando la evidencia fotográfica correctamente y manteniendo tus documentos al día." },
+  ],
+};
+
+const DOC_TYPES = [
+  { key: "licencia_conducir", label: "Licencia de conducir", icon: <IdCard size={17} /> },
+  { key: "identificacion_oficial", label: "Identificación oficial", icon: <IdCard size={17} /> },
+  { key: "constancia_fiscal", label: "Constancia fiscal (RFC)", icon: <IdCard size={17} /> },
+];
+
+const DOC_STATUS_LABEL: Record<string, { label: string; color: string }> = {
+  pendiente_carga:    { label: "Sin subir",        color: "rgba(255,255,255,0.3)" },
+  pendiente_revision: { label: "En revisión",      color: "#f5a623" },
+  aprobado:           { label: "Aprobado",          color: "#00e5ff" },
+  rechazado:          { label: "Rechazado",         color: "#f87171" },
+};
+
 function SettingsScreen({ driver, onBack, onLogout }: {
   driver: { name: string; email: string; phone: string | null; rating: number | null; tripsCompleted: number; certified: boolean } | null;
   onBack: () => void; onLogout: () => void;
 }) {
+  const { updateProfile, fetchBankData, fetchDocuments, uploadDocument } = useDriver();
+  const { setDriver } = useAuthStore();
+  const supabase = createClient();
+
   const [openSection, setOpenSection] = useState<string | null>(null);
-  const toggle = (s: string) => setOpenSection(openSection === s ? null : s);
+  const toggle = (s: string) => setOpenSection(prev => prev === s ? null : s);
+
+  // ── Datos personales ──
+  const [editName, setEditName]   = useState(driver?.name ?? "");
+  const [editPhone, setEditPhone] = useState(driver?.phone ?? "");
+  const [savingP, setSavingP]     = useState(false);
+  const [savedP, setSavedP]       = useState(false);
+  const [errorP, setErrorP]       = useState<string | null>(null);
+
+  const savePersonal = async () => {
+    setSavingP(true); setErrorP(null);
+    const res = await updateProfile({ name: editName.trim(), phone: editPhone.trim() });
+    if (res.ok) {
+      // refrescar driver en store
+      const { data } = await supabase.from("drivers").select("*").eq("id", (driver as unknown as { id: string }).id).single();
+      if (data) setDriver({ ...data as unknown as Parameters<typeof setDriver>[0] });
+      setSavedP(true); setTimeout(() => setSavedP(false), 2000);
+    } else setErrorP(res.error ?? "Error al guardar");
+    setSavingP(false);
+  };
+
+  // ── Datos bancarios ──
+  const [bank, setBank]     = useState({ bankName: "", bankAccountHolder: "", bankClabe: "" });
+  const [loadingB, setLoadingB] = useState(false);
+  const [savingB, setSavingB]   = useState(false);
+  const [savedB, setSavedB]     = useState(false);
+  const [errorB, setErrorB]     = useState<string | null>(null);
+
+  useEffect(() => {
+    if (openSection !== "banco") return;
+    setLoadingB(true);
+    fetchBankData().then(res => {
+      if (res.ok && res.data) setBank(res.data);
+      setLoadingB(false);
+    });
+  }, [openSection, fetchBankData]);
+
+  const saveBank = async () => {
+    setSavingB(true); setErrorB(null);
+    const res = await updateProfile(bank);
+    if (res.ok) { setSavedB(true); setTimeout(() => setSavedB(false), 2000); }
+    else setErrorB(res.error ?? "Error al guardar");
+    setSavingB(false);
+  };
+
+  // ── Documentos ──
+  const [docs, setDocs]           = useState<{ id: string; type: string; status: string; url: string | null; expiresAt: string | null }[]>([]);
+  const [loadingD, setLoadingD]   = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
+  const [errorD, setErrorD]       = useState<string | null>(null);
+
+  useEffect(() => {
+    if (openSection !== "docs") return;
+    setLoadingD(true);
+    fetchDocuments().then(res => {
+      if (res.ok && res.data) setDocs(res.data);
+      setLoadingD(false);
+    });
+  }, [openSection, fetchDocuments]);
+
+  const handleDocUpload = async (docType: string, file: File) => {
+    setUploadingDoc(docType); setErrorD(null);
+    const res = await uploadDocument({ file, docType });
+    if (res.ok) {
+      const refresh = await fetchDocuments();
+      if (refresh.ok && refresh.data) setDocs(refresh.data);
+    } else setErrorD(res.error ?? "Error al subir");
+    setUploadingDoc(null);
+  };
+
+  // ── FAQs ──
+  const [openFaq, setOpenFaq] = useState<string | null>(null);
+
+  const inputStyle: React.CSSProperties = {
+    background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
+    borderRadius: 8, padding: "10px 12px", color: "inherit", fontSize: "0.88rem",
+    outline: "none", width: "100%", boxSizing: "border-box" as const, fontFamily: "inherit",
+  };
+  const saveBtn = (loading: boolean, saved: boolean) => ({
+    marginTop: 12, width: "100%", padding: "11px", borderRadius: 10,
+    background: saved ? "rgba(0,229,255,0.15)" : "rgba(0,229,255,0.12)",
+    border: "1px solid rgba(0,229,255,0.25)", color: saved ? "#00e5ff" : "rgba(255,255,255,0.8)",
+    fontWeight: 700, fontSize: "0.88rem", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.6 : 1,
+  });
+
   return (
     <section className="screen profile-screen">
+      <style dangerouslySetInnerHTML={{ __html: `
+        .pf-input-group{display:flex;flex-direction:column;gap:10px;padding:4px 0 8px}
+        .pf-input-row{display:flex;flex-direction:column;gap:4px}
+        .pf-input-label{font-size:0.71rem;font-weight:600;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:.05em}
+        .pf-error{font-size:0.75rem;color:#f87171;margin-top:6px}
+        .pf-saved{font-size:0.75rem;color:#00e5ff;margin-top:6px;text-align:center}
+        .doc-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06)}
+        .doc-row:last-child{border-bottom:none}
+        .doc-label{font-size:0.85rem;font-weight:600}
+        .doc-status{font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+        .doc-upload-btn{font-size:0.75rem;padding:6px 12px;border-radius:8px;background:rgba(0,229,255,0.1);border:1px solid rgba(0,229,255,0.2);color:rgba(0,229,255,0.9);cursor:pointer;white-space:nowrap;flex-shrink:0}
+        .doc-upload-btn:disabled{opacity:0.4;cursor:not-allowed}
+        .faq-item{border-bottom:1px solid rgba(255,255,255,0.06)}
+        .faq-item:last-child{border-bottom:none}
+        .faq-q{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;cursor:pointer;font-size:0.85rem;font-weight:600;background:none;border:none;color:inherit;width:100%;text-align:left}
+        .faq-a{font-size:0.82rem;color:rgba(255,255,255,0.55);line-height:1.65;padding:0 0 12px}
+        .clabe-hint{font-size:0.7rem;color:rgba(255,255,255,0.3);margin-top:2px}
+      ` }} />
+
       <header className="profile-header">
         <button className="icon-button" aria-label="Volver" onClick={onBack}><ArrowLeft size={22} /></button>
         <h1>Mi perfil</h1>
         <div style={{ width: 22 }} />
       </header>
+
       <section className="profile-card">
         <div className="profile-photo"><span /></div>
         <div>
@@ -881,6 +1020,8 @@ function SettingsScreen({ driver, onBack, onLogout }: {
           {driver?.certified && <strong><CheckCircle2 size={13} /> Conductor certificado</strong>}
         </div>
       </section>
+
+      {/* ── Información personal ── */}
       <section className="profile-section">
         <h2>Información personal</h2>
         <div className="profile-list">
@@ -891,38 +1032,133 @@ function SettingsScreen({ driver, onBack, onLogout }: {
             </button>
             {openSection === "personal" && (
               <div className="pf-group">
-                <ProfileField label="Nombre" value={driver?.name} />
-                <ProfileField label="Correo electrónico" value={driver?.email} />
-                <ProfileField label="Teléfono" value={driver?.phone ?? undefined} />
+                <div className="pf-input-group">
+                  <div className="pf-input-row">
+                    <span className="pf-input-label">Nombre completo</span>
+                    <input style={inputStyle} value={editName} onChange={e => setEditName(e.target.value)} placeholder="Tu nombre" />
+                  </div>
+                  <div className="pf-input-row">
+                    <span className="pf-input-label">Correo electrónico</span>
+                    <input style={{ ...inputStyle, opacity: 0.5 }} value={driver?.email ?? ""} readOnly />
+                  </div>
+                  <div className="pf-input-row">
+                    <span className="pf-input-label">Teléfono</span>
+                    <input style={inputStyle} value={editPhone} onChange={e => setEditPhone(e.target.value)} placeholder="10 dígitos" type="tel" />
+                  </div>
+                </div>
+                {errorP && <p className="pf-error">{errorP}</p>}
+                {savedP && <p className="pf-saved">✓ Guardado</p>}
+                <button style={saveBtn(savingP, savedP)} onClick={savePersonal} disabled={savingP}>
+                  {savingP ? "Guardando…" : savedP ? "✓ Guardado" : "Guardar cambios"}
+                </button>
+              </div>
+            )}
+          </article>
+
+          {/* ── Datos bancarios ── */}
+          <article className="profile-detail">
+            <button onClick={() => toggle("banco")}>
+              <span className="profile-list-icon"><BadgeDollarSign size={17} /></span>
+              <strong>Datos bancarios</strong><ChevronRight size={18} />
+            </button>
+            {openSection === "banco" && (
+              <div className="pf-group">
+                {loadingB ? <p style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.35)", padding: "8px 0" }}>Cargando…</p> : (
+                  <div className="pf-input-group">
+                    <div className="pf-input-row">
+                      <span className="pf-input-label">Banco</span>
+                      <input style={inputStyle} value={bank.bankName} onChange={e => setBank(b => ({ ...b, bankName: e.target.value }))} placeholder="Ej. BBVA, Banorte…" />
+                    </div>
+                    <div className="pf-input-row">
+                      <span className="pf-input-label">Titular de la cuenta</span>
+                      <input style={inputStyle} value={bank.bankAccountHolder} onChange={e => setBank(b => ({ ...b, bankAccountHolder: e.target.value }))} placeholder="Nombre completo del titular" />
+                    </div>
+                    <div className="pf-input-row">
+                      <span className="pf-input-label">CLABE interbancaria</span>
+                      <input style={inputStyle} value={bank.bankClabe} onChange={e => setBank(b => ({ ...b, bankClabe: e.target.value }))} placeholder="18 dígitos" maxLength={18} type="tel" />
+                      <span className="clabe-hint">18 dígitos — sin espacios</span>
+                    </div>
+                  </div>
+                )}
+                {errorB && <p className="pf-error">{errorB}</p>}
+                {savedB && <p className="pf-saved">✓ Guardado</p>}
+                {!loadingB && (
+                  <button style={saveBtn(savingB, savedB)} onClick={saveBank} disabled={savingB}>
+                    {savingB ? "Guardando…" : savedB ? "✓ Guardado" : "Guardar datos bancarios"}
+                  </button>
+                )}
               </div>
             )}
           </article>
         </div>
       </section>
+
+      {/* ── Documentos ── */}
       <section className="profile-section">
         <h2>Tus documentos</h2>
         <div className="profile-list">
-          {["Licencia de conducir", "Identificación oficial", "Constancia fiscal"].map(doc => (
-            <article key={doc} className="profile-detail">
-              <button onClick={() => toggle(doc)}>
-                <span className="profile-list-icon"><IdCard size={17} /></span>
-                <strong>{doc}</strong><ChevronRight size={18} />
+          <article className="profile-detail">
+            <button onClick={() => toggle("docs")}>
+              <span className="profile-list-icon"><IdCard size={17} /></span>
+              <strong>Gestionar documentos</strong><ChevronRight size={18} />
+            </button>
+            {openSection === "docs" && (
+              <div className="pf-group">
+                {loadingD ? <p style={{ fontSize: "0.82rem", color: "rgba(255,255,255,0.35)", padding: "8px 0" }}>Cargando…</p> : (
+                  DOC_TYPES.map(dt => {
+                    const found = docs.find(d => d.type === dt.key);
+                    const st = found ? (DOC_STATUS_LABEL[found.status] ?? { label: found.status, color: "rgba(255,255,255,0.4)" }) : DOC_STATUS_LABEL["pendiente_carga"];
+                    return (
+                      <div key={dt.key} className="doc-row">
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="doc-label">{dt.label}</div>
+                          <div className="doc-status" style={{ color: st.color }}>{st.label}</div>
+                        </div>
+                        <label className="doc-upload-btn" style={{ opacity: uploadingDoc === dt.key ? 0.4 : 1, cursor: uploadingDoc ? "not-allowed" : "pointer" }}>
+                          {uploadingDoc === dt.key ? "Subiendo…" : found?.url ? "Actualizar" : "Subir"}
+                          <input type="file" accept="image/*,application/pdf" style={{ display: "none" }}
+                            disabled={!!uploadingDoc}
+                            onChange={e => { const f = e.target.files?.[0]; if (f) handleDocUpload(dt.key, f); }} />
+                        </label>
+                      </div>
+                    );
+                  })
+                )}
+                {errorD && <p className="pf-error">{errorD}</p>}
+              </div>
+            )}
+          </article>
+        </div>
+      </section>
+
+      {/* ── FAQs ── */}
+      <section className="profile-section">
+        <h2>FAQs y documentación</h2>
+        <div className="profile-list">
+          {Object.entries(FAQ_ITEMS).map(([category, items]) => (
+            <article key={category} className="profile-detail">
+              <button onClick={() => toggle(`faq-${category}`)}>
+                <span className="profile-list-icon"><HelpCircle size={17} /></span>
+                <strong>{category}</strong><ChevronRight size={18} />
               </button>
+              {openSection === `faq-${category}` && (
+                <div className="pf-group" style={{ paddingTop: 4 }}>
+                  {items.map((item, i) => (
+                    <div key={i} className="faq-item">
+                      <button className="faq-q" onClick={() => setOpenFaq(openFaq === `${category}-${i}` ? null : `${category}-${i}`)}>
+                        {item.q}
+                        <ChevronRight size={15} style={{ flexShrink: 0, transform: openFaq === `${category}-${i}` ? "rotate(90deg)" : "none", transition: "transform .2s" }} />
+                      </button>
+                      {openFaq === `${category}-${i}` && <p className="faq-a">{item.a}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
             </article>
           ))}
         </div>
       </section>
-      <section className="profile-section">
-        <h2>FAQs y documentación</h2>
-        <div className="profile-list compact">
-          {["Legales", "Administrativos", "Apoyo"].map(item => (
-            <button key={item}>
-              <span className="profile-list-icon"><HelpCircle size={17} /></span>
-              <strong>{item}</strong><ChevronRight size={18} />
-            </button>
-          ))}
-        </div>
-      </section>
+
       <button className="delete-account" onClick={onLogout}><XCircle size={18} />Cerrar sesión</button>
       <footer className="profile-version-footer">
         <span>v C2026</span><span className="profile-version-sep">·</span>

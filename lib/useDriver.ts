@@ -241,6 +241,132 @@ export function useDriver() {
     return { ok: true }
   }, [])
 
+  // ── Actualizar perfil ────────────────────────────────────────────────────────
+  const updateProfile = useCallback(async (params: {
+    name?: string
+    phone?: string
+    bankName?: string
+    bankAccountHolder?: string
+    bankClabe?: string
+  }): Promise<{ ok: boolean; error?: string }> => {
+    if (!driver) return { ok: false, error: 'Sin sesión' }
+    const supabase = createClient()
+
+    type DriverUpdate = {
+      updated_at: string
+      name?: string
+      phone?: string
+      bank_name?: string
+      bank_account_holder?: string
+      bank_clabe?: string
+    }
+    const payload: DriverUpdate = { updated_at: new Date().toISOString() }
+    if (params.name !== undefined) payload.name = params.name
+    if (params.phone !== undefined) payload.phone = params.phone
+    if (params.bankName !== undefined) payload.bank_name = params.bankName
+    if (params.bankAccountHolder !== undefined) payload.bank_account_holder = params.bankAccountHolder
+    if (params.bankClabe !== undefined) payload.bank_clabe = params.bankClabe
+
+    const { error } = await supabase
+      .from('drivers')
+      .update(payload as never)
+      .eq('id', driver.id)
+
+    if (error) return { ok: false, error: error.message }
+    return { ok: true }
+  }, [driver])
+
+  // ── Obtener datos bancarios del driver ───────────────────────────────────────
+  const fetchBankData = useCallback(async (): Promise<{
+    ok: boolean
+    data?: { bankName: string; bankAccountHolder: string; bankClabe: string }
+    error?: string
+  }> => {
+    if (!driver) return { ok: false, error: 'Sin sesión' }
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('drivers')
+      .select('bank_name, bank_account_holder, bank_clabe')
+      .eq('id', driver.id)
+      .single()
+    if (error) return { ok: false, error: error.message }
+    const row = data as unknown as { bank_name: string; bank_account_holder: string; bank_clabe: string }
+    return {
+      ok: true,
+      data: {
+        bankName: row.bank_name ?? '',
+        bankAccountHolder: row.bank_account_holder ?? '',
+        bankClabe: row.bank_clabe ?? '',
+      }
+    }
+  }, [driver])
+
+  // ── Documentos del conductor ─────────────────────────────────────────────────
+  const fetchDocuments = useCallback(async (): Promise<{
+    ok: boolean
+    data?: Array<{ id: string; type: string; status: string; url: string | null; expiresAt: string | null }>
+    error?: string
+  }> => {
+    if (!driver) return { ok: false, error: 'Sin sesión' }
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('documents')
+      .select('id, type, status, url, expires_at')
+      .eq('owner_id', driver.id)
+      .eq('owner_type', 'driver')
+      .order('created_at', { ascending: false })
+    if (error) return { ok: false, error: error.message }
+    return {
+      ok: true,
+      data: (data ?? []).map((d: Record<string, unknown>) => ({
+        id: d.id as string,
+        type: d.type as string,
+        status: d.status as string,
+        url: d.url as string | null,
+        expiresAt: d.expires_at as string | null,
+      }))
+    }
+  }, [driver])
+
+  // ── Subir documento a Supabase Storage ──────────────────────────────────────
+  const uploadDocument = useCallback(async (params: {
+    file: File
+    docType: string
+  }): Promise<{ ok: boolean; error?: string }> => {
+    if (!driver) return { ok: false, error: 'Sin sesión' }
+    const supabase = createClient()
+
+    const ext = params.file.name.split('.').pop() ?? 'jpg'
+    const path = `drivers/${driver.id}/${params.docType}-${Date.now()}.${ext}`
+
+    const { error: upErr } = await supabase.storage
+      .from('documents')
+      .upload(path, params.file, { upsert: true })
+    if (upErr) return { ok: false, error: upErr.message }
+
+    const { data: urlData } = supabase.storage.from('documents').getPublicUrl(path)
+
+    // Upsert en tabla documents
+    const { error: dbErr } = await supabase
+      .from('documents')
+      .upsert({
+        owner_id: driver.id,
+        owner_type: 'driver',
+        owner_name: driver.name,
+        type: params.docType,
+        status: 'en_revision',
+        url: urlData.publicUrl,
+        storage_path: path,
+        mime_type: params.file.type,
+        file_size_bytes: params.file.size,
+        uploaded_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'owner_id,type' })
+
+    if (dbErr) return { ok: false, error: dbErr.message }
+    return { ok: true }
+  }, [driver])
+
   // ── Ganancias reales ────────────────────────────────────────────────────────
   const fetchEarnings = useCallback(async (): Promise<{
     ok: boolean
@@ -329,6 +455,10 @@ export function useDriver() {
     submitExpense,
     reportIncident,
     fetchEarnings,
+    updateProfile,
+    fetchBankData,
+    fetchDocuments,
+    uploadDocument,
     reload: loadTrips,
   }
 }
