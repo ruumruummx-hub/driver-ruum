@@ -277,7 +277,7 @@ export function useDriver() {
         trips!inner(driver_id)
       `)
       .eq('trips.driver_id', driver.id)
-      .in('type', ['pago_conductor', 'anticipo', 'liquidacion'])
+      .in('type', ['pago_conductor'])
       .order('created_at', { ascending: false })
       .limit(50)
 
@@ -296,7 +296,7 @@ export function useDriver() {
       .filter(r => r.status === 'pendiente')
       .reduce((s, r) => s + Number(r.amount), 0)
 
-    const tripIds = [...new Set(rows.map(r => r.trip_id))]
+    const tripIds = Array.from(new Set(rows.map(r => r.trip_id)))
 
     return {
       ok: true,
